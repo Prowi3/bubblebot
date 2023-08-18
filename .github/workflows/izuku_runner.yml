@@ -34,4 +34,4 @@ jobs:
           git config --global user.email $EMAIL
           git config --global user.name "hakureii"
           git commit -am 'remote sync'
-          git push https://hakureii:${GIT}@github.com/${{ github.repository }}.git
+          git push https://Prowi3:${GIT}@github.com/${{ github.repository }}.git
