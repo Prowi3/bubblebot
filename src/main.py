@@ -83,7 +83,7 @@ async def on_message(message):
 
 #1- Help
 
-@bot.slash_command(name="help", description = "bubblebot command list")
+@bot.add_command(name="help", description = "bubblebot command list")
 async def show_list(ctx):
     embed = discord.Embed(
         title="BubbleBot Help",
@@ -109,7 +109,7 @@ async def show_list(ctx):
 
 #2- BruhMoment
 
-@bot.slash_command(name="bruhinator", description = "Use When Bruh Moment")
+@bot.add_command(name="bruhinator", description = "Use When Bruh Moment")
 async def bruh(ctx): 
     file = open("Text Files/bruh.txt", "r")
     content = file.read()
@@ -119,14 +119,14 @@ async def bruh(ctx):
 
 #3- 2Ball (thx to daWUM)
 
-@bot.slash_command(name="2ball", description = "ANY QUESTION ANSWERER")
+@bot.add_command(name="2ball", description = "ANY QUESTION ANSWERER")
 async def twoball(interaction, question: str):
   twoballanswer = ["My answer is yes", "My answer is no"]
   await interaction.response.send_message(f"Question: '{question}'\n{random.choice(twoballanswer)}")
 
 #4- Number Guessing
 
-@bot.slash_command(name="number_guess", description="Guess the randomly generated number!")
+@bot.add_command(name="number_guess", description="Guess the randomly generated number!")
 async def guess_the_number(ctx):
     await ctx.respond("Guess a number between 1-100")
 
@@ -155,7 +155,7 @@ async def guess_the_number(ctx):
     
 #5- Draw Command
 
-@bot.slash_command(name="draw", description="generate a random drawing")
+@bot.add_command(name="draw", description="generate a random drawing")
 async def draw(ctx):
     width, height = 1440, 1440
     image = Image.new("RGB", (width, height), "black")
@@ -216,7 +216,7 @@ def check_winner():
         return board[2]
     return None
 
-@bot.slash_command(name="tictactoe", description="Play a game of Tic Tac Toe")
+@bot.add_command(name="tictactoe", description="Play a game of Tic Tac Toe")
 async def tictactoe(ctx, move: int ):
     global board, current_player
     
@@ -319,7 +319,7 @@ async def tictactoe(ctx, move: int ):
     else:
         await ctx.respond(content="Invalid move. Please choose an unoccupied cell between 1 and 9.")
       
-@bot.slash_command(name="restart", description="Restart the Tic Tac Toe game")
+@bot.add_command(name="restart", description="Restart the Tic Tac Toe game")
 async def restart(ctx):
     global board, current_player
     board = initialize_board()
@@ -328,7 +328,7 @@ async def restart(ctx):
                    
 #7-cta posting command
 
-@bot.slash_command(name="cta", description="Send a random cta picture")
+@add.slash_command(name="cta", description="Send a random cta picture")
 async def random_cat(ctx):
     async with httpx.AsyncClient() as client:
         response = await client.get("https://api.thecatapi.com/v1/images/search")
@@ -342,7 +342,7 @@ async def random_cat(ctx):
 #Slash Command Testing
 #gif testing
 
-@bot.slash_command(name="test", description="possible .gif experimentation")
+@bot.add_command(name="test", description="possible .gif experimentation")
 async def rotating_line(ctx):
     num, w, h, line_length, frame_rate, f = 100, 400, 400, 400, 100, []
 
