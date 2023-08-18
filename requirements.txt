@@ -6,3 +6,5 @@ httpx
 requests
 math
 asyncio
+pillow
+discord-py-slash-command
