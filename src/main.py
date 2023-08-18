@@ -12,6 +12,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 intents = discord.Intents.default()
 
+slash = SlashCommand(bot)
+
 bot = commands.Bot("bb ", intents=discord.Intents.all())
 
 @bot.remove_command("help")
