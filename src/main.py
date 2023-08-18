@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 
 
-prefix = "?"
+prefix = "bb"
 intents = discord.Intents.all()
 activity = discord.Game(name='')
 bot = commands.Bot(prefix, intents=intents, activity=None, status=None)
