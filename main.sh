@@ -28,4 +28,5 @@ pip install httpx
 pip install requests
 pip install math
 pip install asyncio
+pip install pillow
 izuku
