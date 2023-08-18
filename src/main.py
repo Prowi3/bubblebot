@@ -9,12 +9,8 @@ import asyncio
 from discord.ext import tasks
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
-from discord_slash import SlashCommand
-
 
 intents = discord.Intents.default()
-
-slash = SlashCommand(bot)
 
 bot = commands.Bot("bb ", intents=discord.Intents.all())
 
