@@ -20,5 +20,12 @@ izuku () {
 	  git_sync
 	  done
 }
-pip install -r requirements.txt
+pip install discord.py
+pip install random
+pip install os
+pip install io
+pip install httpx
+pip install requests
+pip install math
+pip install asyncio
 izuku
