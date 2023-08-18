@@ -9,13 +9,6 @@ activity = discord.Game(name='')
 bot = commands.Bot(prefix, intents=intents, activity=None, status=None)
 
 @bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
-    if message.content.lower() == "poke":
-        await message.channel.send("it's joever :(", reference=message)
-
-@bot.event
 async def on_ready():
   os.system("clear")
   print(bot.user)
@@ -34,5 +27,13 @@ async def bye(ctx):
 async def update(ctx):
   await ctx.channel.send('booting up....')
   sys.exit(0)
+
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+    if message.content.lower() == "poke":
+        await message.channel.send("it's joever :(", reference=message)
+        
 
 bot.run(os.environ["TOKEN"])
