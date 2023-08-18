@@ -21,6 +21,10 @@ async def on_ready():
   print(bot.user)
 
 @bot.command()
+async def hello(ctx):
+    await ctx.send("Hello !")
+
+@bot.command()
 async def bye(ctx):
   await ctx.channel.typing()
   os.remove("BOTCONDITION")
