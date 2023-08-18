@@ -9,6 +9,13 @@ activity = discord.Game(name='')
 bot = commands.Bot(prefix, intents=intents, activity=None, status=None)
 
 @bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+    if message.content.lower() == "poke":
+        await message.channel.send("it's joever :(", reference=message)
+
+@bot.event
 async def on_ready():
   os.system("clear")
   print(bot.user)
