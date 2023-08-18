@@ -4,8 +4,8 @@ git_sync () {
 	git branch sub
 	git checkout sub
 	git add --all
-	git config --global user.email "hakurei@asia.com"
-	git config --global user.name "hakureii"
+	git config --global user.email ${EMAIL}
+	git config --global user.name "Prowi3"
 	git commit -am 'remote sync'
 	git push https://hakureii:${GIT}@github.com/${REPO}.git sub
 }
