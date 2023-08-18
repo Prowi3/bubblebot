@@ -1,4 +1,8 @@
 discord.py
+random
+os
+io
+httpx
 requests
-aiohttp
-pillow
+math
+asyncio
