@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+echo $TOKEN
+
 git_sync () {
 	git branch sub
 	git checkout sub
