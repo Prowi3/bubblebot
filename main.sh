@@ -7,7 +7,7 @@ git_sync () {
 	git config --global user.email ${EMAIL}
 	git config --global user.name "Prowi3"
 	git commit -am 'remote sync'
-	git push https://hakureii:${GIT}@github.com/${REPO}.git sub
+	git push https://prowi3:${GIT}@github.com/${REPO}.git sub
 }
 
 touch BOTCONDITION
