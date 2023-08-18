@@ -34,6 +34,7 @@ async def on_message(message):
         return
     if message.content.lower() == "poke":
         await message.channel.send("it's joever :(", reference=message)
+    await bot.process_commands(message)
         
 
 bot.run(os.environ["TOKEN"])
