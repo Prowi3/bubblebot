@@ -15,7 +15,7 @@ async def on_ready():
 
 @bot.command()
 async def hello(ctx):
-    await ctx.send("Hello !")
+  await ctx.send("Hello !")
 
 @bot.command()
 async def bye(ctx):
