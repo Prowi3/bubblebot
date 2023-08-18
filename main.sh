@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-echo $TOKEN
-
 git_sync () {
 	git branch sub
 	git checkout sub
@@ -16,6 +14,7 @@ touch BOTCONDITION
 izuku () {
 	while [ -f BOTCONDITION ]
 	  do
+          echo $TOKEN
 	  mkdir -p logs
 	  git pull
 	  python3 src/main.py >> logs/$RUNNUM.log
