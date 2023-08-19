@@ -41,12 +41,16 @@ async def on_message(message):
 
 
 @bot.event
-async def on_command_error(ctx, error):
-    chan = discord.utils.get(bot.get_all_channels(), id={1142387860650082334})
-    embed = discord.Embed(title=f'{ctx.command}',
-                          description=f'{error}',
-                          color=0xAA698F)
-    await chan.send(embed=embed)
+async def on_error(event, *args, **kwargs):
+    error_channel = bot.get_channel(error_channel_id)
+    if error_channel:
+        embed = discord.Embed(
+            title=f"Error in {event}",
+            color=discord.Color(0xAA698F)
+        )
+        embed.add_field(name="Error Type", value=str(sys.exc_info()[0]), inline=False)
+        embed.add_field(name="Error Value", value=str(sys.exc_info()[1]), inline=False)
+        await error_channel.send(embed=embed)
 
 
 
