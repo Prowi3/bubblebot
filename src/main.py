@@ -5,7 +5,6 @@ import interactions
 
 from discord.ext import commands
 from PIL import Image, ImageDraw
-from discord_slash import SlashCommand
 
 
 prefix = "bb "
