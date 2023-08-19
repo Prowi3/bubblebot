@@ -40,6 +40,16 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
+@bot.event
+async def on_command_error(ctx, error):
+    chan = discord.utils.get(bot.get_all_channels(), id={1142387860650082334})
+    embed = discord.Embed(title=f'{ctx.command}',
+                          description=f'{error}',
+                          color=0xAA698F)
+    await chan.send(embed=embed)
+
+
+
 @bot.command()
 async def test(ctx):
     img_size = 1080
