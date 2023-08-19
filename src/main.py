@@ -35,6 +35,10 @@ async def on_message(message):
     if message.content.lower() == "poke":
         await message.channel.send("it's joever :(", reference=message)
     await bot.process_commands(message)
+
+@tasks.loop(seconds=5)
+async def change_status():
+  await bot.change_presence(activity=discord.Game(random.choice(["Poker"])))
         
 
 bot.run(os.environ["TOKEN"])
