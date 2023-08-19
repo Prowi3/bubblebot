@@ -61,8 +61,11 @@ async def test(ctx):
             square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
             draw.rectangle((square_coords, square_end_coords), outline="white", width=3)
             text = str(num)
-            text_width, text_height = font.getsize(text)  # Corrected line
-            text_position = ((square_coords[0] + square_end_coords[0] - text_width) // 2, (square_coords[1] + square_end_coords[1] - text_height) // 2)
+            text_width, text_height = draw.textsize(text, font=font)
+            text_position = (
+                (square_coords[0] + square_end_coords[0] - text_width) // 2,
+                (square_coords[1] + square_end_coords[1] - text_height) // 2,
+            )
             draw.text(text_position, text, fill="grey", font=font)
             num += 1
 
@@ -71,6 +74,7 @@ async def test(ctx):
     image_bytes.seek(0)
 
     await ctx.send(file=discord.File(image_bytes, filename='grid.png'))
+
 
 
 #error log
