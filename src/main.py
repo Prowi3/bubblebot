@@ -9,7 +9,7 @@ bot = commands.Bot(prefix, intents=intents)
 
 @bot.event
 async def on_ready():
-    await client.change_presense(activity=discord.Game('Poker'))
+    await client.change_presense(activity=discord.Game("Poker"))
     os.system("clear")
     print(bot.user)
 
