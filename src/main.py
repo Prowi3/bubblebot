@@ -44,14 +44,17 @@ async def on_message(message):
 async def test(ctx):
     img = Image.new("RGB", (1080, 1080), color="white")
     draw = ImageDraw.Draw(img)
+    
     img_path = "image.png"
     img.save(img_path)
 
     square_size = 100
     square_coords = ((1080 - square_size) // 2, (1080 - square_size) // 2)
-    draw.rectangle((square_coords, (square_coords[0] + square_size, square_coords[1] + square_size)), outline="black", width=5)
+    square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
+    draw.rectangle((square_coords, square_end_coords), outline="black", width=5)
 
     with open(img_path, "rb") as img_file:
         await ctx.send(file=discord.File(img_file))
+
 
 bot.run(os.environ["TOKEN"])
