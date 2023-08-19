@@ -46,7 +46,7 @@ async def test(ctx):
     grid_size = 10
     square_size = img_size // grid_size
 
-    img = Image.new("RGB", (img_size, img_size), color="white")
+    img = Image.new("RGB", (img_size, img_size), color="black")
     draw = ImageDraw.Draw(img)
     font = ImageFont.load_default() 
 
@@ -55,10 +55,10 @@ async def test(ctx):
         for j in range(grid_size):
             square_coords = (i * square_size, j * square_size)
             square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
-            draw.rectangle((square_coords, square_end_coords), outline="black", width=3)
+            draw.rectangle((square_coords, square_end_coords), outline="white", width=3)
             text_width, text_height = draw.textsize(str(num), font=font)
             text_position = ((square_coords[0] + square_end_coords[0] - text_width) // 2, (square_coords[1] + square_end_coords[1] - text_height) // 2)
-            draw.text(text_position, str(num), fill="black", font=font)
+            draw.text(text_position, str(num), fill="grey", font=font)
             num += 1
 
 
