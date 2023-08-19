@@ -3,7 +3,7 @@ import discord
 
 
 from discord.ext import commands
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 
 prefix = "bb "
@@ -48,18 +48,18 @@ async def test(ctx):
 
     img = Image.new("RGB", (img_size, img_size), color="white")
     draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default() 
 
+    num = 1
     for i in range(grid_size):
         for j in range(grid_size):
             square_coords = (i * square_size, j * square_size)
             square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
-            draw.rectangle((square_coords, square_end_coords), outline="black", width=2)
-
-    img_path = "image.png"
-    img.save(img_path)
-
-    with open(img_path, "rb") as img_file:
-        await ctx.send(file=discord.File(img_file))
+            draw.rectangle((square_coords, square_end_coords), outline="black", width=3)
+            text_width, text_height = draw.textsize(str(num), font=font)
+            text_position = ((square_coords[0] + square_end_coords[0] - text_width) // 2, (square_coords[1] + square_end_coords[1] - text_height) // 2)
+            draw.text(text_position, str(num), fill="black", font=font)
+            num += 1
 
 
 bot.run(os.environ["TOKEN"])
