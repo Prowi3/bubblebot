@@ -42,13 +42,18 @@ async def on_message(message):
 
 @bot.command()
 async def test(ctx):
-    img = Image.new("RGB", (1080, 1080), color="white")
+    img_size = 1080
+    grid_size = 10
+    square_size = img_size // grid_size
+
+    img = Image.new("RGB", (img_size, img_size), color="white")
     draw = ImageDraw.Draw(img)
 
-    square_size = 200
-    square_coords = ((1080 - square_size) // 2, (1080 - square_size) // 2)
-    square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
-    draw.rectangle((square_coords, square_end_coords), outline="black", width=10)
+    for i in range(grid_size):
+        for j in range(grid_size):
+            square_coords = (i * square_size, j * square_size)
+            square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
+            draw.rectangle((square_coords, square_end_coords), outline="black", width=1)
 
     img_path = "image.png"
     img.save(img_path)
