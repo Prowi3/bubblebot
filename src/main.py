@@ -10,8 +10,6 @@ prefix = "bb "
 intents = discord.Intents.all()
 bot = commands.Bot(prefix, intents=intents, activity=discord.Game(name="Poker"))
 
-error_channel_id = 1142387860650082334
-
 
 @bot.event
 async def on_ready():
@@ -41,20 +39,7 @@ async def on_message(message):
         await message.channel.send("Hey Don't Do That! >:(", reference=message)
     await bot.process_commands(message)
 
-
-@bot.event
-async def on_error(event, *args, **kwargs):
-    error_channel = bot.get_channel(error_channel_id)
-    if error_channel:
-        embed = discord.Embed(
-            title=f"Error in {event}",
-            color=discord.Color(0xAA698F)
-        )
-        embed.add_field(name="Error Type", value=str(sys.exc_info()[0]), inline=False)
-        embed.add_field(name="Error Value", value=str(sys.exc_info()[1]), inline=False)
-        await error_channel.send(embed=embed)
-
-
+#snakes and ladders
 
 @bot.command()
 async def test(ctx):
@@ -76,6 +61,22 @@ async def test(ctx):
             text_position = ((square_coords[0] + square_end_coords[0] - text_width) // 2, (square_coords[1] + square_end_coords[1] - text_height) // 2)
             draw.text(text_position, str(num), fill="grey", font=font)
             num += 1
+
+#error log
+
+@bot.event
+async def on_command_error(ctx, error):
+    channel_id = 1142387860650082334
+    chan = bot.get_channel(channel_id)
+    
+    embed = discord.Embed(
+        title=f'Command Error in {ctx.command}',
+        description=str(error),
+        color=discord.Color(int("0xAA698F", 16))
+    )
+    
+    await chan.send(embed=embed)
+
 
 
 bot.run(os.environ["TOKEN"])
