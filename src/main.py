@@ -1,12 +1,14 @@
 import os, sys
 import discord
 import random
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 
 prefix = "bb "
 intents = discord.Intents.all()
-activity = discord.Game(name='')
+intents.typing = False
+intents.presences = False
+activity = discord.Game(name='Playing Poker')
 bot = commands.Bot(prefix, intents=intents, activity=None, status=None)
 
 @bot.event
