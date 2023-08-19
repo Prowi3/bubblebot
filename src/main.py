@@ -1,5 +1,6 @@
 import os, sys
 import discord
+import io
 
 
 from discord.ext import commands
@@ -41,6 +42,11 @@ async def on_message(message):
 
 #snakes and ladders
 
+from PIL import Image, ImageDraw, ImageFont
+
+
+bot = commands.Bot(command_prefix='!')
+
 @bot.command()
 async def test(ctx):
     img_size = 1080
@@ -57,10 +63,17 @@ async def test(ctx):
             square_coords = (i * square_size, j * square_size)
             square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
             draw.rectangle((square_coords, square_end_coords), outline="white", width=3)
-            text_width, text_height = draw.textsize(str(num), font=font)
+            text = str(num)
+            text_width, text_height = draw.textsize(text, font=font)
             text_position = ((square_coords[0] + square_end_coords[0] - text_width) // 2, (square_coords[1] + square_end_coords[1] - text_height) // 2)
-            draw.text(text_position, str(num), fill="grey", font=font)
+            draw.text(text_position, text, fill="grey", font=font)
             num += 1
+
+    image_bytes = io.BytesIO()
+    img.save(image_bytes, format='PNG')
+    image_bytes.seek(0)
+
+    await ctx.send(file=discord.File(image_bytes, filename='grid.png'))
 
 #error log
 
