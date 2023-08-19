@@ -13,8 +13,6 @@ intents = discord.Intents.all()
 
 bot = commands.Bot(prefix, intents=intents, activity=discord.Game(name="Poker"))
 
-intents.typing = False
-intents.presences = False
 
 @bot.event
 async def on_ready():
@@ -45,11 +43,6 @@ async def on_message(message):
     await bot.process_commands(message)
 
 #snakes and ladders
-
-from PIL import Image, ImageDraw, ImageFont
-
-
-bot = commands.Bot(command_prefix='!')
 
 @bot.command()
 async def test(ctx):
