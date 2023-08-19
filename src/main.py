@@ -34,7 +34,7 @@ async def on_message(message):
 #snakes and ladders
 
 bot.command()
-async def test(ctx):
+async def hell(ctx):
     img_size = 1080
     grid_size = 10
     square_size = img_size // grid_size
