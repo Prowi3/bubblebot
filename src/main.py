@@ -53,7 +53,7 @@ async def test(ctx):
         for j in range(grid_size):
             square_coords = (i * square_size, j * square_size)
             square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
-            draw.rectangle((square_coords, square_end_coords), outline="black", width=1)
+            draw.rectangle((square_coords, square_end_coords), outline="black", width=3)
 
     img_path = "image.png"
     img.save(img_path)
