@@ -33,7 +33,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
     if message.content.lower() == "poke":
-        await message.channel.send("poke", reference=message)
+        await message.channel.send("Hey Don't Do That! >:(", reference=message)
     await bot.process_commands(message)
     
 
