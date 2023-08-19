@@ -1,6 +1,7 @@
 import os, sys
 import discord
 from discord.ext import commands
+from PIL import Image, ImageDraw
 
 
 prefix = "bb "
@@ -35,5 +36,15 @@ async def on_message(message):
         await message.channel.send("Hey Don't Do That! >:(", reference=message)
     await bot.process_commands(message)
     
+
+@bot.slash_command(name="sendimage", description="Send a 1080x1080 image",)
+async def send_image(ctx: commands.Context):
+    img = Image.new("RGB", (1080, 1080), color="white")
+    draw = ImageDraw.Draw(img)
+    img_path = "image.png"
+    img.save(img_path)
+
+    with open(img_path, "rb") as img_file:
+        await ctx.send(file=discord.File(img_file))
 
 bot.run(os.environ["TOKEN"])
