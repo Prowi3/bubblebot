@@ -1,5 +1,6 @@
 import os, sys
 import discord
+import random
 from discord.ext import commands
 
 
@@ -38,7 +39,7 @@ async def on_message(message):
 
 @tasks.loop(seconds=5)
 async def change_status():
-  await bot.change_presence(activity=discord.Game(random.choice(["Poker"])))
+  await bot.change_presence(activity=discord.Game(random.choice(["Poker", "it's joever"])))
         
 
 bot.run(os.environ["TOKEN"])
