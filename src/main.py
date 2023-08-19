@@ -1,5 +1,7 @@
 import os, sys
 import discord
+import interactions
+
 
 from discord.ext import commands
 from PIL import Image, ImageDraw
@@ -9,7 +11,7 @@ from discord_slash import SlashCommand
 prefix = "bb "
 intents = discord.Intents.all()
 bot = commands.Bot(prefix, intents=intents, activity=discord.Game(name="Poker"))
-
+bot = interactions.Client(token=(os.environ["TOKEN"]))
 
 @bot.event
 async def on_ready():
@@ -40,7 +42,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-@bot.slash_command(name="sendimage", description="Send a 1080x1080 image",)
+@bot.command(name="sendimage", description="Send a 1080x1080 image",)
 async def send_image(ctx: commands.Context):
     img = Image.new("RGB", (1080, 1080), color="white")
     draw = ImageDraw.Draw(img)
