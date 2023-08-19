@@ -28,6 +28,6 @@ pip install httpx
 pip install requests
 pip install math
 pip install asyncio
-pip install pillow
+pip install Pillow
 pip install discord-py-slash-command
 izuku
