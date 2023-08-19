@@ -41,7 +41,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-@bot.command(name="sendimage", description="Send a 1080x1080 image",)
+@bot.slash_command(name="sendimage", description="Send a 1080x1080 image",)
 async def send_image(ctx: commands.Context):
     img = Image.new("RGB", (1080, 1080), color="white")
     draw = ImageDraw.Draw(img)
