@@ -34,7 +34,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
     if message.content.lower() == "poke":
-        await message.channel.send("it's joever :(", reference=message)
+        await message.channel.send("test :((", reference=message)
     await bot.process_commands(message)
 
 @tasks.loop(seconds=5)
