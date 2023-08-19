@@ -5,11 +5,10 @@ from discord.ext import commands
 
 prefix = "bb "
 intents = discord.Intents.all()
-bot = commands.Bot(prefix, intents=intents)
+bot = commands.Bot(prefix, intents=intents, activity=discord.Game(name="Poker"))
 
 @bot.event
 async def on_ready():
-    await client.change_presense(activity=discord.Game(name="Poker"))
     os.system("clear")
     print(bot.user)
 
