@@ -33,38 +33,26 @@ async def on_message(message):
 
 #snakes and ladders
 
-bot.command()
-async def hell(ctx):
+@bot.command()
+async def test(ctx):
     img_size = 1080
     grid_size = 10
     square_size = img_size // grid_size
 
-    img = Image.new("RGB", (img_size, img_size), color="black")
+    img = Image.new("RGB", (img_size, img_size), color="white")
     draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
 
-    num = 1
     for i in range(grid_size):
         for j in range(grid_size):
             square_coords = (i * square_size, j * square_size)
             square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
-            draw.rectangle((square_coords, square_end_coords), outline="white", width=3)
-            text = str(num)
-            text_size = draw.textsize(text, font=font)
-            text_position = (
-                square_coords[0] + (square_size - text_size[0]) // 2,
-                square_coords[1] + (square_size - text_size[1]) // 2,
-            )
-            draw.text(text_position, text, fill="grey", font=font)
-            num += 1
+            draw.rectangle((square_coords, square_end_coords), outline="black", width=3)
 
-    image_bytes = io.BytesIO()
-    img.save(image_bytes, format='PNG')
-    image_bytes.seek(0)
+    img_path = "image.png"
+    img.save(img_path)
 
-    await ctx.send(file=discord.File(image_bytes, filename='grid.png'))
-
-
+    with open(img_path, "rb") as img_file:
+        await ctx.send(file=discord.File(img_file))
 
 #error log
 
