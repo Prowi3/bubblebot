@@ -1,4 +1,4 @@
-import os, sys
+import os
 import discord
 import io
 
@@ -23,17 +23,6 @@ async def on_ready():
 async def hello(ctx):
     await ctx.send("Hello !")
 
-@bot.command()
-async def bye(ctx):
-    await ctx.channel.typing()
-    os.remove("BOTCONDITION")
-    sys.exit(0)
-
-@bot.command()
-async def update(ctx):
-    await ctx.channel.send('booting up....')
-    sys.exit(0)
-
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -44,7 +33,7 @@ async def on_message(message):
 
 #snakes and ladders
 
-@bot.command()
+bot.command()
 async def test(ctx):
     img_size = 1080
     grid_size = 10
@@ -63,8 +52,8 @@ async def test(ctx):
             text = str(num)
             text_size = draw.textsize(text, font=font)
             text_position = (
-                (square_coords[0] + square_end_coords[0] - text_size[0]) // 2,
-                (square_coords[1] + square_end_coords[1] - text_size[1]) // 2,
+                square_coords[0] + (square_size - text_size[0]) // 2,
+                square_coords[1] + (square_size - text_size[1]) // 2,
             )
             draw.text(text_position, text, fill="grey", font=font)
             num += 1
