@@ -10,6 +10,8 @@ prefix = "bb "
 intents = discord.Intents.all()
 bot = commands.Bot(prefix, intents=intents, activity=discord.Game(name="Poker"))
 
+error_channel_id = 1142387860650082334
+
 
 @bot.event
 async def on_ready():
