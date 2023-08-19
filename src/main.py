@@ -47,6 +47,10 @@ async def test(ctx):
     img_path = "image.png"
     img.save(img_path)
 
+    square_size = 100
+    square_coords = ((1080 - square_size) // 2, (1080 - square_size) // 2)
+    draw.rectangle((square_coords, (square_coords[0] + square_size, square_coords[1] + square_size)), outline="black", width=5)
+
     with open(img_path, "rb") as img_file:
         await ctx.send(file=discord.File(img_file))
 
