@@ -37,9 +37,15 @@ async def on_message(message):
         await message.channel.send("poke", reference=message)
     await bot.process_commands(message)
 
-@tasks.loop(seconds=5)
-async def change_status():
-  await bot.change_presence(activity=discord.Game(random.choice(["Poker", "it's joever"])))
-        
+@bot.event
+async def one_ready():
+    server_id = 1139938006824923136
+    channel_id = 1139987677668724827
+
+    server = bot.get_guild(server_id)
+    channel = bot.get_channel(channel_id)
+
+    await channel.send("Bubble is Ready")
+    
 
 bot.run(os.environ["TOKEN"])
