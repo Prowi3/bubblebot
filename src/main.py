@@ -8,9 +8,13 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 prefix = "bb "
+
 intents = discord.Intents.all()
+
 bot = commands.Bot(prefix, intents=intents, activity=discord.Game(name="Poker"))
 
+intents.typing = False
+intents.presences = False
 
 @bot.event
 async def on_ready():
