@@ -75,7 +75,7 @@ class SnakesAndLaddersGame:
         return any(player >= 100 for player in self.players)
 
 @bot.command()
-async def test(ctx):
+async def snakes_and_ladders(ctx):
     game = SnakesAndLaddersGame()
 
     while not game.is_game_over():
@@ -117,8 +117,12 @@ async def test(ctx):
         
         game.play_turn()
 
-    winner = game.players.index(max(game.players)) + 1
-    await ctx.send(f"Player {winner} wins!")
+    winners = [i + 1 for i, player in enumerate(game.players) if player >= 100]
+    if winners:
+        winners_text = ", ".join(map(str, winners))
+        await ctx.send(f"Player {winners_text} win{'s' if len(winners) > 1 else ''}!")
+    else:
+        await ctx.send("The game ended in a draw.")
 #error log
 
 @bot.event
