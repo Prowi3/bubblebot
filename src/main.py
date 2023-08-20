@@ -75,7 +75,7 @@ class SnakesAndLaddersGame:
         return any(player >= 100 for player in self.players)
 
 @bot.command()
-async def snakes_and_ladders(ctx):
+async def test(ctx):
     game = SnakesAndLaddersGame()
 
     while not game.is_game_over():
