@@ -33,8 +33,6 @@ async def on_message(message):
     await bot.process_commands(message)
 
 #snakes and ladders
-
-
 class SnakesAndLaddersGame:
     def __init__(self):
         self.grid_size = 10
@@ -74,8 +72,8 @@ class SnakesAndLaddersGame:
     def is_game_over(self):
         return any(player >= 100 for player in self.players)
 
-@bot.command()
-async def test(ctx):
+@bot.command(name='snakes')
+async def play_snakes(ctx):
     game = SnakesAndLaddersGame()
 
     while not game.is_game_over():
