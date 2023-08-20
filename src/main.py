@@ -35,20 +35,31 @@ async def on_message(message):
 
 @bot.command()
 async def test(ctx):
-    img_size = 1080
+    img_size = 800
     grid_size = 10
     square_size = img_size // grid_size
 
     img = Image.new("RGB", (img_size, img_size), color="white")
     draw = ImageDraw.Draw(img)
 
+    snakes = {16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78}
+    ladders = {1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100}
+
     for i in range(grid_size):
         for j in range(grid_size):
-            square_coords = (i * square_size, j * square_size)
-            square_end_coords = (square_coords[0] + square_size, square_coords[1] + square_size)
+            x = i * square_size
+            y = (grid_size - 1 - j) * square_size  # Flip y-coordinate for correct orientation
+            square_coords = (x, y)
+            square_end_coords = (x + square_size, y + square_size)
             draw.rectangle((square_coords, square_end_coords), outline="black", width=3)
 
-    img_path = "image.png"
+            position = i + j * grid_size + 1  # Calculate the current position on the board
+            if position in snakes:
+                draw.text((x + square_size // 2, y + square_size // 2), "S", fill="red", font=None, anchor="mm")
+            if position in ladders:
+                draw.text((x + square_size // 2, y + square_size // 2), "L", fill="green", font=None, anchor="mm")
+
+    img_path = "snakes_and_ladders.png"
     img.save(img_path)
 
     with open(img_path, "rb") as img_file:
