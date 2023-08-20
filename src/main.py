@@ -121,6 +121,7 @@ async def play_snakes(ctx):
         await ctx.send(f"Player {winners_text} win{'s' if len(winners) > 1 else ''}!")
     else:
         await ctx.send("The game ended in a draw.")
+        
 #error log
 
 @bot.event
