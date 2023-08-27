@@ -15,8 +15,6 @@ jobs:
     env:
       TOKEN: ${{secrets.TOKEN}}
       GIT: ${{secrets.GIT}}
-      EMAIL: ${{secrets.EMAIL}}
-      RUNNUM: ${{ github.run_number }}
       REPO: ${{ github.repository }}
     steps:
       - name: GIT clone the main repo !
@@ -28,10 +26,4 @@ jobs:
         run: |
           BOTDIR="/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}"
           cd $BOTDIR
-          chmod +x $BOTDIR/main.sh
-          timeout $(( 4 * 60 * 60 ))s bash -c "bash ${BOTDIR}/main.sh"
-          git add --all
-          git config --global user.email $EMAIL
-          git config --global user.name "hakureii"
-          git commit -am 'remote sync'
-          git push https://Prowi3:${GIT}@github.com/${{ github.repository }}.git
+          bash $BOTDIR/main.sh
