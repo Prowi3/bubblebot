@@ -193,7 +193,7 @@ async def pet(ctx, image: Optional[Union[discord.PartialEmoji, discord.Member, s
 
 #8- Ser V2
 
-Key = os.environ.get('SEARCH')
+Key = AIzaSyAeMJ1iu391aYkAftUYEt4qtp6EY5I8K6c
 
 sent_image_links = []
 
