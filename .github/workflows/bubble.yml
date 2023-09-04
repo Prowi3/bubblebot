@@ -15,6 +15,7 @@ jobs:
     env:
       TOKEN: ${{secrets.TOKEN}}
       GIT: ${{secrets.GIT}}
+      GLSEARCH: ${{secrets.GLSEARCH}}
       REPO: ${{ github.repository }}
     steps:
       - name: GIT clone the main repo !
