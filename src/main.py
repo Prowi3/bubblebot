@@ -540,27 +540,19 @@ async def get_pictures_safe(ctx, bomb: bool = False):
 
 #7- ScreenShot haku
 
-@bot.slash_command(name="screenshot", description="Take screenshots of URLs")
+@bot.slash_command(name="screenshot", description="take screenshots of URLs")
 async def ss(ctx, url: str = None):
     if not url:
-        await ctx.respond("Please provide a valid URL.")
-        return
-
-    url = url.strip()
-    output_filename = "screenshot.png"
-
-    try:
-        os.system(f'firefox -screenshot {output_filename} {url}')
-    except Exception as e:
-        await ctx.respond(f"An error occurred while taking the screenshot: {e}")
-        return
-
-    embed = discord.Embed(title="Screenshot", description=f"URL: {url}", color=0x8E6539)
-    file = discord.File(output_filename, filename="image.png")
-    embed.set_image(url="attachment://image.png")
-
-    await ctx.respond(file=file, embed=embed)
-    os.remove(output_filename)
+        await ctx.respond("Please provide a link")
+        return 0
+    else:
+        link = f"{url}"
+        os.system(f'firefox -screenshot {link}')
+        embed = discord.Embed(title="Firefox:", description=f"*{link}*", color=0x8E6539)
+        file = discord.File("screenshot.png", filename="image.png")
+        embed.set_image(url="attachment://image.png")
+        await ctx.respond(file=file, embed=embed)
+        os.remove("screenshot.png")
             
 
 #---------------------------------------------------------#
