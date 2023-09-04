@@ -266,7 +266,7 @@ async def on_message(message):
 #2- Poke
     
     if message.content.lower() == "poke":
-        file = open("/workspaces/bubblebot/miscellaneous/poke.txt", "r")
+        file = open("Prowi3/bubblebot/miscellaneous/poke.txt", "r")
         content = file.read()
         all_lines = content.splitlines( )
         output = random.choice(all_lines) 
