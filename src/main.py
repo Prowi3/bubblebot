@@ -9,7 +9,6 @@ import json
 import urllib.parse
 import aiohttp
 import datetime
-import subprocess
 
 from discord.ext import tasks
 from discord.ext import commands
@@ -19,10 +18,6 @@ from io import BytesIO
 from typing import Union, Optional
 from petpetgif import petpet as petpetgif
 from googleapiclient.discovery import build
-
-#subs
-
-subprocess.run(["firefox", "-screenshot", url])
 
 #prefixes and command removal
 
