@@ -115,7 +115,7 @@ async def moisy(ctx, number: int = None):
     if number > 50:
         await ctx.send("Sorry, the maximum number is 50.")
     else:
-        file = open("Prowi3/bubblebot/miscellaneous/moise.txt", "r")
+        file = open("miscellaneous/moise.txt", "r")
         content = file.read()
         file.close()
         for _ in range(number):
@@ -448,7 +448,7 @@ async def tictactoe(ctx, move: int ):
             draw = ImageDraw.Draw(image)
             
             win_color = (255, 0, 0)
-            font = ImageFont.truetype("Prowi3/bubblebot/miscellaneous/font.ttf", 60)
+            font = ImageFont.truetype("miscellaneous/font.ttf", 60)
             
             for i, cell in enumerate(board):
                 row = i // 3
@@ -494,7 +494,7 @@ async def tictactoe(ctx, move: int ):
         image = Image.new('RGB', (300, 300), 'black')
         draw = ImageDraw.Draw(image)
         
-        font = ImageFont.truetype("Prowi3/bubblebot/miscellaneous/font.ttf", 60)
+        font = ImageFont.truetype("miscellaneous/font.ttf", 60)
         
         for i, cell in enumerate(board):
             row = i // 3
