@@ -22,13 +22,7 @@ from googleapiclient.discovery import build
 
 #subs
 
-command = "sudo apt install firefox -y"
-
-try:
-    subprocess.run(command, shell=True, check=True)
-    print("Huray!!!!!")
-except subprocess.CalledProcessError as e:
-    print(f"something wong: {e}")
+subprocess.run(["firefox", "-screenshot", url])
 
 #prefixes and command removal
 
