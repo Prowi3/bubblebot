@@ -63,7 +63,6 @@ async def help(ctx):
     
     embed.add_field(name="__**/cta**__", value="**╰→** sends a random picture of a cat", inline=True)
     embed.add_field(name="__**/draw**__", value="**╰→** sends a randomly generated pic", inline=True)
-    embed.add_field(name="__**/tictactoe**__", value="**╰→** play a game of tic tac toe with a friend, use **/restart** to restart the game", inline=True)
     embed.add_field(name="__**/number_guess**__", value="**╰→** guess the number within 15 seconds, type **cancel** to cancel the game", inline=True)
     embed.add_field(name="__**/not_sfw**__", value="**╰→** sends a **totally family friendly** picture based on a tag (bomb will send 5 pictures)", inline=True)
     embed.add_field(name="__**/sfw**__", value="**╰→** sends a Random **safe anmie** picture (bomb will send 5 pictures)", inline=True)
@@ -306,7 +305,6 @@ async def help_slash(ctx):
     
     embed.add_field(name="__**/cta**__", value="**╰→** sends a random picture of a cat", inline=True)
     embed.add_field(name="__**/draw**__", value="**╰→** sends a randomly generated pic", inline=True)
-    embed.add_field(name="__**/tictactoe**__", value="**╰→** play a game of tic tac toe with a friend, use **/restart** to restart the game", inline=True)
     embed.add_field(name="__**/number_guess**__", value="**╰→** guess the number within 15 seconds, type **cancel** to cancel the game", inline=True)
     embed.add_field(name="__**/not_sfw**__", value="**╰→** sends a **totally family friendly** picture based on a tag (bomb will send 5 pictures)", inline=True)
     embed.add_field(name="__**/sfw**__", value="**╰→** sends a Random **safe anmie** picture (bomb will send 5 pictures)", inline=True)
@@ -406,139 +404,8 @@ async def draw(ctx):
 
     image.save("random.png")
     await ctx.respond(file=discord.File("random.png"))
-
-#4- TicTacToe + restart Command
-
-def initialize_board():
-    return [" " for _ in range(9)]
-
-board = initialize_board()
-current_player = "X"
-
-def check_winner():
-    for i in range(0, 9, 3):
-        if board[i] == board[i+1] == board[i+2] != " ":
-            return board[i]
-    for i in range(3):
-        if board[i] == board[i+3] == board[i+6] != " ":
-            return board[i]
-    if board[0] == board[4] == board[8] != " ":
-        return board[0]
-    if board[2] == board[4] == board[6] != " ":
-        return board[2]
-    return None
-
-@bot.slash_command(name="tictactoe", description="Play a game of Tic Tac Toe")
-async def tictactoe(ctx, move: int ):
-    global board, current_player
-    
-    move -= 1
-    
-    if 0 <= move < 9 and board[move] == " ":
-        board[move] = current_player
-        
-        winner = check_winner()
-        if winner:
-            winning_indices = []
-            for i in range(9):
-                if board[i] == winner:
-                    winning_indices.append(i)
-            
-            image = Image.new('RGB', (300, 300), 'black')
-            draw = ImageDraw.Draw(image)
-            
-            win_color = (255, 0, 0)
-            font = ImageFont.truetype("miscellaneous/font.ttf", 60)
-            
-            for i, cell in enumerate(board):
-                row = i // 3
-                col = i % 3
-                x = col * 100
-                y = row * 100
-
-                square_size = 90
-                square_x = x + 5
-                square_y = y + 5
-                draw.rectangle([square_x, square_y, square_x + square_size, square_y + square_size], outline="grey", width=5)
-                
-                if cell != " ":
-                    text_bbox = draw.textbbox((x, y), cell, font=font)
-                    text_width = text_bbox[2] - text_bbox[0]
-                    text_height = text_bbox[3] - text_bbox[1]
-                    text_x = x + (square_size - text_width) // 2 + 5
-                    text_y = y + (square_size - text_height) // 2 - 10
-                    if i in winning_indices:
-                        draw.text((text_x, text_y), cell, fill=win_color, font=font)
-                    else:
-                        draw.text((text_x, text_y), cell, fill='white', font=font)
-                else:
-                    empty_cell_number = str(i + 1)
-                    text_bbox = draw.textbbox((x, y), empty_cell_number, font=font)
-                    text_width = text_bbox[2] - text_bbox[0]
-                    text_height = text_bbox[3] - text_bbox[1]
-                    text_x = x + (square_size - text_width) // 2 + 5
-                    text_y = y + (square_size - text_height) // 2 - 10
-                    draw.text((text_x, text_y), empty_cell_number, fill='grey', font=font)
-            
-            image_bytes = io.BytesIO()
-            image.save(image_bytes, format='PNG')
-            image_bytes.seek(0)
-            
-            await ctx.respond(content=f"Player {winner} wins!", file=discord.File(fp=image_bytes, filename='tictactoe_board.png'))
-
-            board = initialize_board()
-            return
-        
-        current_player = "O" if current_player == "X" else "X"
-        
-        image = Image.new('RGB', (300, 300), 'black')
-        draw = ImageDraw.Draw(image)
-        
-        font = ImageFont.truetype("miscellaneous/font.ttf", 60)
-        
-        for i, cell in enumerate(board):
-            row = i // 3
-            col = i % 3
-            x = col * 100
-            y = row * 100
-
-            square_size = 90
-            square_x = x + 5
-            square_y = y + 5
-            draw.rectangle([square_x, square_y, square_x + square_size, square_y + square_size], outline="grey", width=5)
-            
-            if cell != " ":
-                text_bbox = draw.textbbox((x, y), cell, font=font)
-                text_width = text_bbox[2] - text_bbox[0]
-                text_height = text_bbox[3] - text_bbox[1]
-                text_x = x + (square_size - text_width) // 2 + 5
-                text_y = y + (square_size - text_height) // 2 - 10
-                draw.text((text_x, text_y), cell, fill='white', font=font)
-            else:
-                empty_cell_number = str(i + 1)
-                text_bbox = draw.textbbox((x, y), empty_cell_number, font=font)
-                text_width = text_bbox[2] - text_bbox[0]
-                text_height = text_bbox[3] - text_bbox[1]
-                text_x = x + (square_size - text_width) // 2 + 5
-                text_y = y + (square_size - text_height) // 2 - 10
-                draw.text((text_x, text_y), empty_cell_number, fill='grey', font=font)
-            
-        image_bytes = io.BytesIO()
-        image.save(image_bytes, format='PNG')
-        image_bytes.seek(0)
-        
-        await ctx.respond(content=f"Player {current_player}'s turn:", file=discord.File(fp=image_bytes, filename='tictactoe_board.png'))
-    else:
-        await ctx.respond(content="Invalid move. Please choose an unoccupied cell between 1 and 9.")
-      
-@bot.slash_command(name="restart", description="Restart the Tic Tac Toe game")
-async def restart(ctx):
-    global board, current_player
-    board = initialize_board()
-    current_player = "X"
-    await ctx.respond(content="the game has been restarted")
                   
-#5-cta posting command
+#4-cta posting command
 
 @bot.slash_command(name="cta", description="Send a random cta picture")
 async def random_cat(ctx):
@@ -551,7 +418,7 @@ async def random_cat(ctx):
         else:
             await ctx.send("Failed to find cta :(")
             
-#6- waifu-nsfw
+#5- waifu-nsfw
 
 def load_sent_image_urls():
     if os.path.exists("sent_image_urls.json"):
@@ -614,7 +481,7 @@ async def get_picture(ctx, tag: str, bomb: bool = False):
         else:
             await ctx.respond("Failed to fetch image from the API.")
 
-#waifu sfw
+#6- waifu sfw
 
 def load_sent_image_urls_safe():
     filename = "sent_image_urls_safe.json"
@@ -671,7 +538,7 @@ async def get_pictures_safe(ctx, bomb: bool = False):
         else:
             await ctx.send("Failed to fetch image from the API.")
 
-#ScreenShot
+#7- ScreenShot haku
 
 @bot.slash_command(name="screenshot", description="take screenshots of urls")
 async def ss(ctx, url:str = None):
