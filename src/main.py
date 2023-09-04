@@ -202,7 +202,7 @@ async def google_image_search(ctx, *, query: str):
     global sent_image_links
 
     if not Key:
-        await ctx.send("man u fucked up")
+        await ctx.send("man you fucked up")
         return
 
     service = build("customsearch", "v1", developerKey=Key)
