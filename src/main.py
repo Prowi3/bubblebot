@@ -193,7 +193,7 @@ async def pet(ctx, image: Optional[Union[discord.PartialEmoji, discord.Member, s
 
 #8- Ser V2
 
-Key = os.environ['SEARCH']
+Key = os.environ.get('SEARCH')
 
 sent_image_links = []
 
@@ -201,13 +201,22 @@ sent_image_links = []
 async def google_image_search(ctx, *, query: str):
     global sent_image_links
 
+    if not Key:
+        await ctx.send("man u fucked up")
+        return
+
     service = build("customsearch", "v1", developerKey=Key)
-    results = service.cse().list(
-        q=query,
-        cx='779432b9c976d4325',
-        searchType='image',
-        safe='high'
-    ).execute()
+
+    try:
+        results = service.cse().list(
+            q=query,
+            cx='779432b9c976d4325',
+            searchType='image',
+            safe='high'
+        ).execute()
+    except Exception as e:
+        await ctx.send(f"An error occurred: {str(e)}")
+        return
 
     if 'items' in results and len(results['items']) > 0:
         image_links = [item['link'] for item in results['items']]
@@ -215,7 +224,7 @@ async def google_image_search(ctx, *, query: str):
         new_image_links = [link for link in image_links if link not in sent_image_links]
         
         if not new_image_links:
-            await ctx.send("No new images found.")
+            await ctx.send("please stop searching for weird shit")
             return
 
         random_image_link = random.choice(new_image_links)
@@ -226,7 +235,7 @@ async def google_image_search(ctx, *, query: str):
         
         await ctx.send(embed=embed)
     else:
-        await ctx.send("Stop searching for weird shit please")
+        await ctx.send("No search results found for your query.")
 
 #test
 
