@@ -707,7 +707,7 @@ async def on_ready():
         embed = discord.Embed(
             title="READY!",
             description="Bubble is online!",
-            color=0x9FC6F6  # Color code
+            color=0x9FC6F6
         )
 
         await channel.send(embed=embed)
