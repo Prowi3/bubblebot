@@ -696,9 +696,14 @@ async def ss(ctx, url:str = None):
 
 @bot.event
 async def on_ready():
-    print("Ready")
-    print(f"logged as {bot.user}")
+    print(f"Logged in as {bot.user}")
     change_status.start()
+
+    channel_id = 1142387860650082334
+    channel = bot.get_channel(channel_id)
+
+    if channel:
+        await channel.send("Bubble is online!")
 
 
 @tasks.loop(seconds=5)
