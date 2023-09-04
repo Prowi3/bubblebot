@@ -9,6 +9,7 @@ import json
 import urllib.parse
 import aiohttp
 import datetime
+import subprocess
 
 from discord.ext import tasks
 from discord.ext import commands
@@ -18,6 +19,16 @@ from io import BytesIO
 from typing import Union, Optional
 from petpetgif import petpet as petpetgif
 from googleapiclient.discovery import build
+
+#subs
+
+command = "sudo apt install firefox -y"
+
+try:
+    subprocess.run(command, shell=True, check=True)
+    print("Huray!!!!!")
+except subprocess.CalledProcessError as e:
+    print(f"something wong: {e}")
 
 #prefixes and command removal
 
