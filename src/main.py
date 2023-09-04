@@ -193,13 +193,15 @@ async def pet(ctx, image: Optional[Union[discord.PartialEmoji, discord.Member, s
 
 #8- Ser V2
 
+Key = os.environ['SEARCH']
+
 sent_image_links = []
 
 @bot.command(name="gl", aliases=["google"])
 async def google_image_search(ctx, *, query: str):
     global sent_image_links
 
-    service = build("customsearch", "v1", developerKey=os.environ['SEARCH'])
+    service = build("customsearch", "v1", developerKey=Key)
     results = service.cse().list(
         q=query,
         cx='779432b9c976d4325',
