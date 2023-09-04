@@ -703,7 +703,14 @@ async def on_ready():
     channel = bot.get_channel(channel_id)
 
     if channel:
-        await channel.send("Bubble is online!")
+
+        embed = discord.Embed(
+            title="READY!",
+            description="Bubble is online!",
+            color=0x9FC6F6  # Color code
+        )
+
+        await channel.send(embed=embed)
 
 
 @tasks.loop(seconds=5)
