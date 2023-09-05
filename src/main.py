@@ -12,12 +12,13 @@ import datetime
 
 from discord.ext import tasks
 from discord.ext import commands
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
 from io import BytesIO
 from typing import Union, Optional
 from petpetgif import petpet as petpetgif
 from googleapiclient.discovery import build
+from selenium import webdriver
 
 #prefixes and command removal
 
@@ -248,6 +249,26 @@ async def gradient(ctx):
     gradient_image_bytesio.seek(0)
 
     await ctx.reply(file=discord.File(gradient_image_bytesio, 'gradient.png'))
+
+#Selenium
+
+@bot.command()
+async def sert(ctx, *, query):
+    try:
+        driver = webdriver.Chrome()
+        
+        driver.get(f'https://www.google.com/search?q={query}&tbm=isch')
+        
+        image = driver.find_element_by_css_selector('.rg_i')
+        image_url = image.get_attribute('src')
+        
+        await ctx.send(image_url)
+    
+    except Exception as e:
+        print(e)
+    
+    finally:
+        driver.quit()
 
 #---------------------------------------------------------#
 #                  :ON_Message commands:                  #
