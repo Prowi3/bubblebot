@@ -29,5 +29,4 @@ pip install beautifulsoup4
 pip install pet-pet-gif
 pip install google-api-python-client==1.8.0
 pip install py-cord
-sudo apt install firefox -y
 izuku
