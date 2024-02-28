@@ -22,6 +22,7 @@ izuku () {
 }
 
 pip install random
+pip install discord.py
 pip install httpx
 pip install aiohttp
 pip install requests
