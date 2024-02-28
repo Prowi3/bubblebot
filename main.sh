@@ -30,7 +30,7 @@ pip install pillow
 pip install beautifulsoup4
 pip install pet-pet-gif
 pip install google-api-python-client==1.8.0
-pip install pycord
+pip install py-cord
 pip install numpy
 pip install noise
 
