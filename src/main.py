@@ -1,4 +1,4 @@
-import pycord
+import py-cord
 import random
 import os
 import httpx
