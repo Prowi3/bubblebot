@@ -14,7 +14,6 @@ import noise
 import re
 import xml.etree.ElementTree as ET
 
-
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageFilter
 from bs4 import BeautifulSoup
