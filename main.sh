@@ -20,6 +20,7 @@ izuku () {
 	  git_sync
 	  done
 }
+
 pip install random
 pip install httpx
 pip install aiohttp
@@ -31,3 +32,5 @@ pip install google-api-python-client==1.8.0
 pip install pycord
 pip install numpy
 pip install noise
+
+python3 src/main.py
