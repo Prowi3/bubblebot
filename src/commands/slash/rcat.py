@@ -11,3 +11,6 @@ async def random_cat(ctx):
             await ctx.send(content=cta_url)
         else:
             await ctx.send("Failed to find cta :(")
+
+def setup(bot):
+    bot.add_command(random_cat)
