@@ -582,7 +582,7 @@ async def draw(ctx: discord.ApplicationContext,
 
     if text:
         font_size = int(math.sqrt(width * height) / len(text)) + 25
-        font_path = os.path.join(os.path.dirname(__file__), f'Prowi3/bubblebot/Fonts/{font}.ttf')
+        font_path = os.path.join(os.path.dirname(__file__), f'Fonts/{font}.ttf')
         font = ImageFont.truetype(font_path, font_size)
         text_width, text_height = draw.textsize(text, font=font)
         x = round((width - text_width) / 2)
