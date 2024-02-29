@@ -30,9 +30,10 @@ bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 @bot.remove_command("help")
 
 @bot.slash_command(name="profile", description="Do not the command")
-async def profile(ctx: discord.ApplicationContext, name: str, image: discord.Attachment):
-    await bot.user.edit(username=name, avatar=image.url)
-    await ctx.response("Done")
+async def profile(ctx: discord.ApplicationCommandContext, name: str, image: discord.File):
+    image_bytes = await image.read()
+    await bot.user.edit(username=name, avatar=image_bytes)
+    await ctx.respond("Done")
 
 #-------------------------------------------------------#
 #                    :prefix commands:                  #
