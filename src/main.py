@@ -30,7 +30,7 @@ bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 
 bot.load_extension("commands.test")
 
-bot.remove_command("test")
+bot.remove_command("help")
 
 #-------------------------------------------------------#
 #                    :prefix commands:                  #
