@@ -28,7 +28,9 @@ prefixes = ["bb ", "bB ", "BB ", "Bb "]
 
 bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 
-@bot.remove_command("help")
+bot.load_extension('commands.hello')
+
+bot.remove_command("test")
 
 #-------------------------------------------------------#
 #                    :prefix commands:                  #
