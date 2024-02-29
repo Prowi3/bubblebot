@@ -26,7 +26,7 @@ pip install random
 pip install httpx
 pip install aiohttp
 pip install requests
-pip install pillow
+pip install pillow==9.5.0
 pip install beautifulsoup4
 pip install pet-pet-gif
 pip install google-api-python-client==1.8.0
