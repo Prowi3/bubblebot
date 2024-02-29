@@ -2,7 +2,7 @@ import httpx
 from discord.ext import commands
 
 @commands.slash_command(name="cta", description="Send a random cta picture")
-async def random_cat(ctx):
+async def rcat(ctx):
     async with httpx.AsyncClient() as client:
         response = await client.get("https://api.thecatapi.com/v1/images/search")
         if response.status_code == 200:
@@ -13,4 +13,4 @@ async def random_cat(ctx):
             await ctx.send("Failed to find cta :(")
 
 def setup(bot):
-    bot.add_command(random_cat)
+    bot.add_command(rcat)
