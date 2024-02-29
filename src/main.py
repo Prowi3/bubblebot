@@ -648,6 +648,7 @@ async def get_custom_images(ctx, tag: str):
 
 #7- Draw_Perlin
 
+
 fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'DancingScript-Bold', 'Rubik-Bold', 'Arial-Black']
 
 is_rendering = False
@@ -693,7 +694,7 @@ async def perlin(ctx: discord.ApplicationContext,
         if text:
             draw = ImageDraw.Draw(gradient_image)
             font_size = int(math.sqrt(width * height) / len(text)) + 25
-            font_path = f"miscellaneous/Fonts/{font}.tff"
+            font_path = f"miscellaneous/Fonts/{font}.ttf"
             font = ImageFont.truetype(font_path, font_size)
             text_width, text_height = draw.textsize(text, font=font)
             x = round((width - text_width) / 2) + 1
