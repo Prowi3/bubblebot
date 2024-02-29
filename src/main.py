@@ -1,4 +1,4 @@
-import discord.py
+import discord
 import random
 import os
 import httpx
