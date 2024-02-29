@@ -534,11 +534,11 @@ async def guess_the_number(ctx):
     
 #3- Draw_Shapes
 
-fonts = ['Roboto-Black.ttf', 'SpaceMono-Regular.ttf', 'SpaceMono-Bold.ttf', 'DancingScript-Bold.ttf', 'Rubik-Bold.ttf', 'Arial-Black.ttf']
+fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'DancingScript-Bold', 'Rubik-Bold', 'Arial-Black']
 
 @bot.slash_command(name="shapes_draw", description="Draw an image with Random Shapes")
 async def draw(ctx: discord.ApplicationContext,
-  font: discord.Option(str, choices=fonts), *, text: str = ''):
+  font: discord.Option(str, choices=fonts) = None, *, text: str = ''):
 
     await ctx.defer()
 
@@ -582,7 +582,7 @@ async def draw(ctx: discord.ApplicationContext,
 
     if text:
         font_size = int(math.sqrt(width * height) / len(text)) + 25
-        font_path = os.path.join(os.path.dirname(__file__), f'{font}')
+        font_path = os.path.join(os.path.dirname(__file__), f'Prowi3/bubblebot/Fonts/{font}.ttf')
         font = ImageFont.truetype(font_path, font_size)
         text_width, text_height = draw.textsize(text, font=font)
         x = round((width - text_width) / 2)
