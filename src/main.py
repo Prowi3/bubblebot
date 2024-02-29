@@ -393,7 +393,7 @@ async def on_message(message):
 #2- Poke
     
     if message.content.lower() == "poke":
-        file = open("stuffers/poke.txt", "r")
+        file = open("miscellaneous/text files/poke.txt", "r")
         content = file.read()
         all_lines = content.splitlines( )
         output = random.choice(all_lines) 
@@ -531,79 +531,8 @@ async def guess_the_number(ctx):
         await ctx.send(f"Time's up! The correct number was {random_number}.")
 
     game_in_progress = False
-    
-#3- Draw_Shapes
-
-fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'DancingScript-Bold', 'Rubik-Bold', 'Arial-Black']
-
-@bot.slash_command(name="shapes_draw", description="Draw an image with Random Shapes")
-async def draw(ctx: discord.ApplicationContext,
-  font: discord.Option(str, choices=fonts) = None, *, text: str = ''):
-
-    await ctx.defer()
-
-    width, height = 1440, 1440
-    image = Image.new("RGB", (width, height), "black")
-    draw = ImageDraw.Draw(image)
-
-    for _ in range(25):
-        choice = random.choice(["line", "circle", "triangle"])
-        color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-
-        if choice == "line":
-            x1 = random.randint(0, width - 1)
-            y1 = random.randint(0, height - 1)
-            x2 = random.randint(0, width - 1)
-            y2 = random.randint(0, height - 1)
-            draw.line((x1, y1, x2, y2), fill=color, width=random.randint(1, 20))
-
-        elif choice == "circle":
-            center_x = random.randint(0, width - 1)
-            center_y = random.randint(0, height - 1)
-            radius = random.randint(10, 200)
-            draw.ellipse(
-                (center_x - radius, center_y - radius, center_x + radius, center_y + radius),
-                outline=color,
-                width=random.randint(1, 10)
-            )
-
-        elif choice == "triangle":
-            x1 = random.randint(0, width - 1)
-            y1 = random.randint(0, height - 1)
-            x2 = random.randint(0, width - 1)
-            y2 = random.randint(0, height - 1)
-            x3 = random.randint(0, width - 1)
-            y3 = random.randint(0, height - 1)
-            draw.polygon([(x1, y1), (x2, y2), (x3, y3)], outline=color, width=random.randint(1, 10))
-
-    image_blurred = image.filter(ImageFilter.GaussianBlur(radius=10))
-
-    image_combined = ImageChops.screen(image, image_blurred)
-
-    if text:
-        font_size = int(math.sqrt(width * height) / len(text)) + 25
-        font_path = f"miscellaneous/Fonts/{font}.ttf"
-        font = ImageFont.truetype(font_path, font_size)
-        text_width, text_height = draw.textsize(text, font=font)
-        x = round((width - text_width) / 2)
-        y = round((height - text_height) / 2)
-        text_image = Image.new('RGB', (width, height))
-        text_draw = ImageDraw.Draw(text_image)
-        text_draw.text((x, y), text=text, fill=(255, 255, 255), font=font)
-
-        image_under_text = ImageChops.invert(text_image)
-        image_combined = ImageChops.screen(image_combined, image_under_text)
-
-    image_combined.save("random_combined.png")
-
-    image_final = Image.open("random_combined.png")
-    image_final_inverted = ImageChops.invert(image_final)
-
-    image_final_inverted.save("image_final_inverted.png")
-
-    await ctx.respond(files=[discord.File("image_final_inverted.png")])
                   
-#4-cta posting command
+#3-cta posting command
 
 @bot.slash_command(name="cta", description="Send a random cta picture")
 async def random_cat(ctx):
@@ -616,23 +545,10 @@ async def random_cat(ctx):
         else:
             await ctx.send("Failed to find cta :(")
             
-#5- waifu-nsfw
-
-json_file_path = "senturlsnsfw.json"
-
-try:
-    with open(json_file_path, 'r') as json_file:
-        data = json.load(json_file)
-        previous_urls = data['urls'] if 'urls' in data else []
-        current_index = data['index'] if 'index' in data else 0
-except FileNotFoundError:
-    previous_urls = []
-    current_index = 0
+#4- waifu-nsfw
 
 @bot.slash_command(name="not_sfw", description="Fetch random NSFW image URL from yande.re")
 async def get_custom_images(ctx):
-    global current_index
-
     if not ctx.channel.is_nsfw():
         await ctx.respond("This is the wrong channel :]", ephemeral=True)
         return
@@ -650,15 +566,6 @@ async def get_custom_images(ctx):
         if data:
             file_url = data[0]['sample_url']
 
-            if file_url in previous_urls:
-                await ctx.respond("Image already sent before.", ephemeral=True)
-                return
-
-            previous_urls.append(file_url)
-
-            with open(json_file_path, 'w') as json_file:
-                json.dump({'urls': previous_urls, 'index': current_index}, json_file)
-
             embed = discord.Embed(
                 title="Random NSFW Image",
                 color=discord.Color(0x9FC6F6)
@@ -671,23 +578,10 @@ async def get_custom_images(ctx):
     else:
         await ctx.respond(f"Error fetching images. Status code: {response.status_code}", ephemeral=True)
 
-#6- waifu sfw
-
-json_file_path = "senturlssfw.json"
-
-try:
-    with open(json_file_path, 'r') as json_file:
-        data = json.load(json_file)
-        previous_urls = data['urls'] if 'urls' in data else []
-        current_index = data['index'] if 'index' in data else 0
-except FileNotFoundError:
-    previous_urls = []
-    current_index = 0
+#5- waifu sfw
 
 @bot.slash_command(name="sfw", description="Fetch random SFW image URL from yande.re")
 async def get_custom_images(ctx):
-    global current_index
-    
     await ctx.defer()
 
     random_page = random.randint(1, 100)
@@ -701,15 +595,6 @@ async def get_custom_images(ctx):
         if data:
             file_url = data[0]['sample_url']
 
-            if file_url in previous_urls:
-                await ctx.respond("Image already sent before.", ephemeral=True)
-                return
-
-            previous_urls.append(file_url)
-
-            with open(json_file_path, 'w') as json_file:
-                json.dump({'urls': previous_urls, 'index': current_index}, json_file)
-
             embed = discord.Embed(
                 title="Random SFW Image",
                 colour=discord.Colour(0x9FC6F6))
@@ -721,7 +606,49 @@ async def get_custom_images(ctx):
     else:
         await ctx.respond(f"Error fetching images. Status code: {response.status_code}", ephemeral=True)
 
+#6- R34
+
+@bot.slash_command(name="r36", description="Fetch images from R34")
+async def get_custom_images(ctx, tag: str):
+    if not ctx.channel.is_nsfw():
+        await ctx.respond("This command can only be used in NSFW channels.", ephemeral=True)
+        return
+    
+    await ctx.defer()
+
+    tag = tag.replace(" ", "_").lower()
+
+    url = f"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags={tag}"
+    response = requests.get(url)
+
+    if response.status_code == 200 and response.content:
+        data = response.text
+
+        root = ET.fromstring(data)
+
+        posts = root.findall('.//post')
+
+        if posts:
+            file_url = posts[0].get('file_url')
+
+            if file_url.endswith(".mp4"):
+                await ctx.respond(f"You searched for {tag}. Here's a video: {file_url}")
+            else:
+                embed = discord.Embed(
+                    title=f"You searched for {tag}.",
+                    color=discord.Colour(0x9FC6F6)
+                )
+                embed.set_image(url=file_url)
+
+                await ctx.respond(embed=embed)
+        else:
+            await ctx.respond(f"No images found for the provided tag ({tag}).", ephemeral=True)
+    else:
+        await ctx.respond(f"Error fetching images. Status code: {response.status_code}", ephemeral=True)
+
 #7- Draw_Perlin
+
+fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'DancingScript-Bold', 'Rubik-Bold', 'Arial-Black']
 
 is_rendering = False
 
@@ -766,7 +693,7 @@ async def perlin(ctx: discord.ApplicationContext,
         if text:
             draw = ImageDraw.Draw(gradient_image)
             font_size = int(math.sqrt(width * height) / len(text)) + 25
-            font_path = os.path.join(os.path.dirname(__file__), f'{font}')
+            font_path = f"miscellaneous/Fonts/{font}.tff"
             font = ImageFont.truetype(font_path, font_size)
             text_width, text_height = draw.textsize(text, font=font)
             x = round((width - text_width) / 2) + 1
@@ -796,23 +723,7 @@ async def pfp(ctx, user: discord.Member = None):
     embed.set_image(url=pfp_url)
     await ctx.respond(embed=embed)
 
-#9 - Moise
-
-@bot.slash_command(name="mosienator", description="send mosie pictures (max is 50)")
-async def moisy(ctx, number: int):
-    if number > 50:
-        await ctx.respond("Sorry, the maximum number is 50.")
-    else:
-        file = open("stuffers/Moise.txt", "r")
-        content = file.read()
-        file.close()
-        
-        await ctx.respond("Mosie :3")
-        
-        for _ in range(number):
-            await ctx.send(content)
-
-#10- Petpet
+#9- Petpet
 
 @bot.slash_command(
     name="pet",
@@ -848,71 +759,6 @@ async def pet(ctx, user: discord.Member = None, emote: str = None, image_url: st
         petpetgif.make(source, dest)
         dest.seek(0)
         await ctx.respond(file=discord.File(dest, filename="petpet.gif"))
-
-#testing nsfw
-
-json_file_path = "senturls.json"
-
-try:
-    with open(json_file_path, 'r') as json_file:
-        data = json.load(json_file)
-        previous_urls = data['urls'] if 'urls' in data else []
-        current_index = data['index'] if 'index' in data else 0
-except FileNotFoundError:
-    previous_urls = []
-    current_index = 0
-
-@bot.slash_command(name="r36", description="Fetch images from R34")
-async def get_custom_images(ctx, tag: str):
-    global current_index
-    
-    if not ctx.channel.is_nsfw():
-        await ctx.respond("Wrong Channel Bruh💀", ephemeral=True)
-        return
-    
-    await ctx.defer()
-
-    tag = tag.replace(" ", "_").lower()
-
-    url = f"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags={tag}"
-    response = requests.get(url)
-
-    if response.status_code == 200 and response.content:
-        data = response.text
-
-        root = ET.fromstring(data)
-
-        posts = root.findall('.//post')
-
-        if posts and current_index < len(posts):
-            file_url = posts[current_index].get('file_url')
-
-            while file_url in previous_urls:
-                current_index += 1
-                if current_index >= len(posts):
-                    await ctx.respond(f"Nothing found for the provided tag ({tag}).", ephemeral=True)
-                    return
-                file_url = posts[current_index].get('file_url')
-
-            previous_urls.append(file_url)
-
-            with open(json_file_path, 'w') as json_file:
-                json.dump({'urls': previous_urls, 'index': current_index}, json_file)
-
-            if file_url.endswith(".mp4"):
-                await ctx.respond(f"[you searched for {tag}.]({file_url})")
-            else:
-                embed = discord.Embed(
-                    title=f"You searched for {tag}.",
-                    color=discord.Colour(0x9FC6F6)
-                )
-                embed.set_image(url=file_url)
-
-                await ctx.respond(embed=embed)
-        else:
-            await ctx.respond(f"No new images found for the provided tag ({tag}).", ephemeral=True)
-    else:
-        await ctx.respond(f"Error fetching images. Status code: {response.status_code}", ephemeral=True)
 
 #-------------------------------------------------------#
 #            always on (thx to Haku), token             #
