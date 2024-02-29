@@ -108,7 +108,7 @@ sent_image_links = []
 async def google_image_search(ctx, *, query: str):
     global sent_image_links
 
-    service = build("customsearch", "v1", developerKey=os.environ['Ser'])
+    service = build("customsearch", "v1", developerKey=os.environ['GLSEARCH'])
     results = service.cse().list(
         q=query,
         cx='779432b9c976d4325',
