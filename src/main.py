@@ -654,7 +654,7 @@ is_rendering = False
 
 @bot.slash_command(name="clouds_draw", description='Draw an image using Noise, type "/help" for more ifo')
 async def perlin(ctx: discord.ApplicationContext,
-  font: discord.Option(str, choices=fonts), *, text: str = '', octaves: int = 1, lacunarity: float = 5.0, persistence: float = 0.5):
+  font: discord.Option(str, choices=fonts) == None, *, text: str = '', octaves: int = 1, lacunarity: float = 5.0, persistence: float = 0.5):
     global is_rendering
     
     if is_rendering:
