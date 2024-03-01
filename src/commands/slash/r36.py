@@ -3,10 +3,11 @@ from discord.ext import commands
 import requests
 import xml.etree.ElementTree as ET
 
+sent_image_links = []
+
 class R34(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.sent_urls = {}
 
     @commands.slash_command(name="r36", description="Fetch images from R34")
     async def r36(self, ctx, tag: str):
@@ -29,29 +30,12 @@ class R34(commands.Cog):
             posts = root.findall('.//post')
 
             if posts:
-                file_urls = []
-                for post in posts:
-                    file_url = post.get('file_url')
-                    if file_url:
-                        file_urls.append(file_url)
+                file_url = posts[0].get('file_url')
 
-                if file_urls:
-                    if tag in self.sent_urls:
-                        sent_urls_for_tag = self.sent_urls[tag]
-                        unsent_urls_for_tag = [url for url in file_urls if url not in sent_urls_for_tag]
-                        if unsent_urls_for_tag:
-                            file_url = unsent_urls_for_tag[0]
-                            self.sent_urls[tag].append(file_url)
-                        else:
-                            await ctx.respond("No new images found for this tag.", ephemeral=True)
-                            return
-                    else:
-                        file_url = file_urls[0]
-                        self.sent_urls[tag] = [file_url]
-
-                    if file_url.endswith(".mp4"):
-                        await ctx.respond(f"[You searched for {tag}.]({file_url})")
-                    else:
+                if file_url.endswith(".mp4"):
+                    await ctx.respond(f"[You searched for {tag}. Here's a video:]({file_url})")
+                else:
+                    if file_url not in sent_image_links:
                         embed = discord.Embed(
                             title=f"You searched for {tag}.",
                             color=discord.Colour(0x9FC6F6)
@@ -59,8 +43,10 @@ class R34(commands.Cog):
                         embed.set_image(url=file_url)
 
                         await ctx.respond(embed=embed)
-                else:
-                    await ctx.respond("No new images found for this tag.", ephemeral=True)
+
+                        sent_image_links.append(file_url)
+                    else:
+                        await ctx.respond("Image already sent.", ephemeral=True)
             else:
                 await ctx.respond(f"No images found for the provided tag ({tag}).", ephemeral=True)
         else:
