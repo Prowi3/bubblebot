@@ -1,15 +1,14 @@
 import discord
 from discord.ext import commands
 import requests
-import xml.etree.ElementTree as ET
 
-sent_image_links = []
+sent_media_links = []
 
 class R34(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="r36", description="Fetch images from R34")
+    @commands.slash_command(name="r36", description="Fetch images or GIFs from R34")
     async def r36(self, ctx, tag: str):
         if not ctx.channel.is_nsfw():
             await ctx.respond("This command can only be used in NSFW channels.", ephemeral=True)
@@ -23,36 +22,29 @@ class R34(commands.Cog):
         response = requests.get(url)
 
         if response.status_code == 200 and response.content:
-            data = response.text
+            data = response.json()
 
-            root = ET.fromstring(data)
+            media = [post['file_url'] for post in data if post['file_url'].endswith(('.jpg', '.jpeg', '.png', '.gif')) and post['file_url'] not in sent_media_links]
 
-            posts = root.findall('.//post')
-
-            if posts:
-                for post in posts:
-                    file_url = post.get('file_url')
-
-                    if file_url.endswith(".mp4"):
-                        await ctx.respond(f"[You searched for {tag}. Here's a video:]({file_url})")
-                    else:
-                        if file_url not in sent_image_links:
-                            embed = discord.Embed(
-                                title=f"You searched for {tag}.",
-                                color=discord.Colour(0x9FC6F6)
-                            )
-                            embed.set_image(url=file_url)
-
-                            await ctx.respond(embed=embed)
-
-                            sent_image_links.append(file_url)
-                            break  # Break out of loop once a new image is sent
+            if media:
+                file_url = media[0]
+                is_gif = file_url.endswith('.gif')
+                if is_gif:
+                    message = f"You searched for {tag}. Here's a GIF:"
                 else:
-                    await ctx.respond(f"All images found for the provided tag ({tag}) have been sent.", ephemeral=True)
+                    message = f"You searched for {tag}. Here's an image:"
+
+                embed = discord.Embed(
+                    title=message,
+                    color=0x9FC6F6
+                )
+                embed.set_image(url=file_url)
+                await ctx.respond(embed=embed)
+                sent_media_links.append(file_url)
             else:
-                await ctx.respond(f"No images found for the provided tag ({tag}).", ephemeral=True)
+                await ctx.respond(f"All media found for the provided tag ({tag}) have been sent or there are no media available.", ephemeral=True)
         else:
-            await ctx.respond(f"Error fetching images. Status code: {response.status_code}", ephemeral=True)
+            await ctx.respond(f"Error fetching media. Status code: {response.status_code}", ephemeral=True)
 
 def setup(bot):
     bot.add_cog(R34(bot))
