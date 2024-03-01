@@ -8,6 +8,7 @@ import random
 import math
 
 fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'DancingScript-Bold', 'Rubik-Bold', 'Arial-Black']
+is_rendering = False  # Declare is_rendering as a global variable
 
 class DrawNoise(commands.Cog):
     def __init__(self, bot):
