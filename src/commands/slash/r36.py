@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 class R34(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.sent_urls = {}
 
     @commands.slash_command(name="r36", description="Fetch images from R34")
     async def r36(self, ctx, tag: str):
@@ -28,7 +29,15 @@ class R34(commands.Cog):
             posts = root.findall('.//post')
 
             if posts:
+                if tag in self.sent_urls:
+                    sent_url = self.sent_urls[tag]
+                    new_url = posts[0].get('file_url')
+                    if new_url == sent_url:
+                        await ctx.respond("No new images found for this tag.", ephemeral=True)
+                        return
+
                 file_url = posts[0].get('file_url')
+                self.sent_urls[tag] = file_url
 
                 if file_url.endswith(".mp4"):
                     await ctx.respond(f"You searched for {tag}. Here's a video: {file_url}")
