@@ -16,6 +16,8 @@ bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 
 bot.load_extension("commands.prefix.test")
 
+bot.load_extension("commands.prefix.google_images")
+
 #slash commands
 
 bot.load_extension('commands.slash.draw_noise')
