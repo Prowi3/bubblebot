@@ -1,40 +1,51 @@
 import discord
 from discord.ext import commands
 
-class Pagination:
+class PrevButton(discord.ui.Button):
+    def __init__(self, paginate):
+        super().__init__(style=discord.ButtonStyle.secondary, label="Previous", custom_id="prev_button")
+        self.paginate = paginate
+
+    async def callback(self, interaction):
+        self.paginate.current_page = max(0, self.paginate.current_page - 1)
+        
+        if self.paginate.current_page < 2:
+            self.paginate.next_button.style = discord.ButtonStyle.success
+        
+        await self.paginate.update_page(self.paginate.current_page, interaction.message)
+        await interaction.response.defer()
+
+class NextButton(discord.ui.Button):
+    def __init__(self, paginate):
+        super().__init__(style=discord.ButtonStyle.success, label="Next", custom_id="next_button")
+        self.paginate = paginate
+
+    async def callback(self, interaction):
+        self.paginate.current_page = min(len(self.paginate.pages) - 1, self.paginate.current_page + 1)
+        
+        if self.paginate.current_page == 2:
+            self.style = discord.ButtonStyle.danger
+        else:
+            self.style = discord.ButtonStyle.success
+        
+        await self.paginate.update_page(self.paginate.current_page, interaction.message)
+        await interaction.response.defer()
+
+class Paginate:
     def __init__(self, ctx):
-        self.ctx = ctx
-        self.pages = []
+        self.pages = ["", "", ""]
         self.current_page = 0
+        self.ctx = ctx
+        self.prev_button = PrevButton(self)
+        self.next_button = NextButton(self)
+        self.view = discord.ui.View()
+        self.view.add_item(self.prev_button)
+        self.view.add_item(self.next_button)
 
-    async def send_current_page(self):
-        await self.ctx.send(embed=self.pages[self.current_page])
-
-    def add_page(self, embed):
-        self.pages.append(embed)
-
-    async def show(self):
-        await self.send_current_page()
-
-        async def prev_button_callback(interaction):
-            self.current_page = (self.current_page - 1) % len(self.pages)
-            await self.send_current_page()
-
-        async def next_button_callback(interaction):
-            self.current_page = (self.current_page + 1) % len(self.pages)
-            await self.send_current_page()
-
-        prev_button = discord.ui.Button(style=discord.ButtonStyle.primary, label="Previous", custom_id="prev")
-        prev_button.callback = prev_button_callback
-
-        next_button = discord.ui.Button(style=discord.ButtonStyle.primary, label="Next", custom_id="next")
-        next_button.callback = next_button_callback
-
-        view = discord.ui.View()
-        view.add_item(prev_button)
-        view.add_item(next_button)
-
-        await self.ctx.send("Use the buttons to navigate.", view=view)
+    async def update_page(self, page, message):
+        page_dict = eval(self.pages[page])
+        embed = discord.Embed.from_dict(page_dict)
+        await message.edit(embed=embed, view=self.view)
 
 class Help(commands.Cog):
     def __init__(self, bot):
@@ -42,8 +53,9 @@ class Help(commands.Cog):
 
     @commands.slash_command(name="help", description="BubbleBot's information")
     async def help_slash(self, ctx):
-        pagination = Pagination(ctx)
+        p = Paginate(ctx)
 
+        # Page 1
         embed1 = discord.Embed(
             title="BubbleBot Help",
             description="Here's a list of available commands:",
@@ -62,8 +74,10 @@ class Help(commands.Cog):
         embed1.add_field(name="__**BB Google**__", value="**╰→** High-quality image search (limited to 100 per day).")
 
         embed1.set_footer(text="1/3")
-        pagination.add_page(embed1)
 
+        p.pages[0] = str(embed1.to_dict())
+
+        # Page 2
         embed2 = discord.Embed(
             title="/clouds_draw Help",
             description="Here's a list of what each parameter does:",
@@ -80,8 +94,9 @@ class Help(commands.Cog):
         embed2.add_field(name="5- **Text**:", value="Whatever you type will appear in the image unless it's some weird characters/emojis")
 
         embed2.set_footer(text="2/3")
-        pagination.add_page(embed2)
+        p.pages[1] = str(embed2.to_dict())
 
+        # Page 3
         embed3 = discord.Embed(
             title="THAT'S BASICALLY IT!",
             description="If you encounter any issues or want to share something with us, please don't hesitate to get in touch by using (/contact). We're always here to help! :)",
@@ -89,9 +104,16 @@ class Help(commands.Cog):
         )
 
         embed3.set_footer(text="3/3")
-        pagination.add_page(embed3)
 
-        await pagination.show()
+        p.pages[2] = str(embed3.to_dict())
+
+        message = await ctx.respond(embed=embed1)
+
+        view = discord.ui.View()
+        view.add_item(PrevButton(p))
+        view.add_item(NextButton(p))
+
+        await message.edit_original_response(view=view)
 
 def setup(bot):
     bot.add_cog(Help(bot))
