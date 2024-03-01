@@ -28,6 +28,8 @@ bot.load_extension('commands.slash.pet')
 
 bot.load_extension('commands.slash.r36')
 
+bot.load_extension('commands.slash.sfw')
+
 #TOEKN
 
 
