@@ -12,9 +12,9 @@ class RandomCat(commands.Cog):
             if response.status_code == 200:
                 data = response.json()
                 cat_url = data[0]["url"]
-                await ctx.send(content=cat_url)
+                await ctx.respond(content=cat_url)
             else:
-                await ctx.send("Failed to find cat :(")
+                await ctx.respond("Failed to find cat :(")
 
 def setup(bot):
     bot.add_cog(RandomCat(bot))
