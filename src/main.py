@@ -18,6 +18,8 @@ bot.load_extension("commands.prefix.test")
 
 bot.load_extension("commands.prefix.google_images")
 
+bot.load_extension("commands.prefix.google_images_low")
+
 #slash commands
 
 bot.load_extension('commands.slash.draw_noise')
