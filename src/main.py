@@ -3,6 +3,8 @@ import os
 
 from discord.ext import commands
 
+from on_message import bubble_call, poke, mentions
+
 
 #prefixes
 
@@ -39,6 +41,16 @@ bot.load_extension('commands.slash.not_sfw')
 bot.load_extension('commands.slash.help')
 
 bot.load_extension('commands.slash.contact')
+
+#on_message
+
+
+@bot.event
+async def on_message(message):
+    await bubble_call(message)
+    await poke(message)
+    await mentions(message)
+    await bot.process_commands(message)
 
 #TOEKN
 
