@@ -42,6 +42,7 @@ for command in slash_commands:
 POKE_FILE_PATH = "miscellaneous/text files/poke.txt"
 MENTIONED_USER_ID = "<@1131529056882524212>"
 ERROR_CHANNEL_ID = 1142387860650082334
+READY_CHANNEL_ID = 1213257302455615518
 
 async def bubble_call(message):
     if message.author.bot or not message.content.lower().startswith("bubble"):
@@ -77,6 +78,13 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
     print(f"Bubble is in {len(bot.guilds)} servers")
     await bot.change_presence(activity=discord.Game("poker | /help"))
+    
+    channel = bot.get_channel(READY_CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(title="READY", color=discord.Color.white())
+        await channel.send(embed=embed)
+    else:
+        print("Channel not found.")
 
 @bot.event
 async def on_command_error(ctx, error):
