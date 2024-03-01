@@ -13,4 +13,4 @@ async def random_cat(ctx):
             await ctx.send("Failed to find cat :(")
 
 def setup(bot):
-    bot.add_slash_command(random_cat)
+    bot.add_command(random_cat)
