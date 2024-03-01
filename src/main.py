@@ -76,7 +76,7 @@ async def on_message(message):
 async def on_ready():
     print(f"Logged in as {bot.user}")
     print(f"Bubble is in {len(bot.guilds)} servers")
-    await bot.change_presence(activity=discord.Game("/help | bb help"))
+    await bot.change_presence(activity=discord.Game("poker | /help"))
 
 @bot.event
 async def on_command_error(ctx, error):
