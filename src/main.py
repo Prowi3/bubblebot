@@ -18,6 +18,7 @@ bot.load_extension("commands.prefix.test")
 
 #slash commands
 
+bot.load_extension('commands.slash_commands.clouds_draw')
 
 bot.load_extension('commands.slash.rcat')
 
