@@ -9,7 +9,6 @@ class Help(commands.Cog):
     async def help_slash(self, ctx):
         p = Paginate(ctx)
 
-        # Page 1
         embed1 = discord.Embed(
             title="BubbleBot Help",
             description="Here's a list of available commands:",
@@ -31,7 +30,6 @@ class Help(commands.Cog):
 
         p.pages[0] = str(embed1.to_dict())
 
-        # Page 2
         embed2 = discord.Embed(
             title="/clouds_draw Help",
             description="Here's a list of what each parameter does:",
@@ -50,7 +48,6 @@ class Help(commands.Cog):
         embed2.set_footer(text="2/3")
         p.pages[1] = str(embed2.to_dict())
 
-        # Page 3
         embed3 = discord.Embed(
             title="THAT'S BASICALLY IT!",
             description="If you encounter any issues or want to share something with us, please don't hesitate to get in touch by using (/contact). We're always here to help! :)",
