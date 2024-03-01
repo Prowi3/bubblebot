@@ -29,26 +29,27 @@ class R34(commands.Cog):
             posts = root.findall('.//post')
 
             if posts:
-                if tag in self.sent_urls:
-                    sent_url = self.sent_urls[tag]
-                    new_url = posts[0].get('file_url')
-                    if new_url == sent_url:
-                        await ctx.respond("No new images found for this tag.", ephemeral=True)
-                        return
+                file_url = None
+                for post in posts:
+                    file_url = post.get('file_url')
+                    if file_url not in self.sent_urls.values():
+                        break
 
-                file_url = posts[0].get('file_url')
-                self.sent_urls[tag] = file_url
+                if file_url:
+                    self.sent_urls[tag] = file_url
 
-                if file_url.endswith(".mp4"):
-                    await ctx.respond(f"You searched for {tag}. Here's a video: {file_url}")
+                    if file_url.endswith(".mp4"):
+                        await ctx.respond(f"[You searched for {tag}.]({file_url})")
+                    else:
+                        embed = discord.Embed(
+                            title=f"You searched for {tag}.",
+                            color=discord.Colour(0x9FC6F6)
+                        )
+                        embed.set_image(url=file_url)
+
+                        await ctx.respond(embed=embed)
                 else:
-                    embed = discord.Embed(
-                        title=f"You searched for {tag}.",
-                        color=discord.Colour(0x9FC6F6)
-                    )
-                    embed.set_image(url=file_url)
-
-                    await ctx.respond(embed=embed)
+                    await ctx.respond("No new images found for this tag.", ephemeral=True)
             else:
                 await ctx.respond(f"No images found for the provided tag ({tag}).", ephemeral=True)
         else:
