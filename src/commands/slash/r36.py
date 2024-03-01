@@ -58,3 +58,4 @@ class R34(commands.Cog):
 
 def setup(bot):
     bot.add_cog(R34(bot))
+    
