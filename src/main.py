@@ -24,6 +24,8 @@ bot.load_extension('commands.slash.rcat')
 
 bot.load_extension('commands.slash.pfp')
 
+bot.load_extension('commands.slash.pet')
+
 #TOEKN
 
 
