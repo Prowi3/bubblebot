@@ -104,4 +104,3 @@ async def on_command_error(ctx, error):
 
 bot.remove_command("help")
 bot.run(os.environ['TOKEN'])
-
