@@ -1,10 +1,17 @@
-name: CI
+name: Bubble
 on:
+  # starts on every push on main branch !
   push:
     branches: [ "main" ]
 
+  # starts automatically every 5 hour !
+  schedule:
+    - cron: '0 */5 * * *'
+
+  # enable manual startup !
   workflow_dispatch:
 
+# checks if there's any host already running and kills it !
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -18,13 +25,11 @@ jobs:
       GLSEARCH: ${{secrets.GLSEARCH}}
       REPO: ${{ github.repository }}
     steps:
-      - name: GIT clone the main repo !
-        run: |
-          rm -rf /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}
-          cd /home/runner/work/${{ github.event.repository.name }}
-          git clone https://github.com/${{ github.repository }}.git
-      - name: Run a multi-line script
-        run: |
-          BOTDIR="/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}"
-          cd $BOTDIR
-          bash $BOTDIR/main.sh
+      - name: checkout the source.
+        uses: actions/checkout@v2
+
+      - name: install requirements
+        run: pip install -r requirements.txt
+
+      - name: starting bubble.
+        run: python3 src/main.py

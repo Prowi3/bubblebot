@@ -1,0 +1,11 @@
+# libraries goes here 
+aiohttp
+beautifulsoup4
+google-api-python-client==1.8.0
+httpx
+noise
+numpy
+pet-pet-gif
+pillow==9.5.0
+py-cord
+requests
