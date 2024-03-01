@@ -22,6 +22,8 @@ bot.load_extension('commands.slash.draw_noise')
 
 bot.load_extension('commands.slash.rcat')
 
+bot.load_extension('commands.slash.pfp')
+
 #TOEKN
 
 
