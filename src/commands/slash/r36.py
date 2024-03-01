@@ -32,12 +32,11 @@ class R34(commands.Cog):
                 file_url = None
                 for post in posts:
                     file_url = post.get('file_url')
-                    if file_url not in self.sent_urls.values():
+                    if file_url and file_url not in self.sent_urls.values():
+                        self.sent_urls[tag] = file_url
                         break
 
                 if file_url:
-                    self.sent_urls[tag] = file_url
-
                     if file_url.endswith(".mp4"):
                         await ctx.respond(f"[You searched for {tag}.]({file_url})")
                     else:
