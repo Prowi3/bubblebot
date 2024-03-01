@@ -18,7 +18,7 @@ bot.load_extension("commands.prefix.test")
 
 #slash commands
 
-bot.load_extension('commands.slash.clouds_draw')
+bot.load_extension('commands.slash.draw_noise')
 
 bot.load_extension('commands.slash.rcat')
 
