@@ -4,6 +4,7 @@ import random
 from discord.ext import commands
 
 #prefixes
+
 prefixes = ["bb ", "bB ", "BB ", "Bb "]
 bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 
@@ -92,5 +93,6 @@ async def on_command_error(ctx, error):
     await ctx.send(embed=embed)
 
 #TOEKN
+
 bot.remove_command("help")
 bot.run(os.environ['TOKEN'])
