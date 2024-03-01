@@ -36,19 +36,29 @@ class R34(commands.Cog):
                         file_urls.append(file_url)
 
                 if file_urls:
-                    self.sent_urls[tag] = file_urls
-
-                    for file_url in file_urls:
-                        if file_url.endswith(".mp4"):
-                            await ctx.respond(f"[You searched for {tag}.]({file_url})")
+                    if tag in self.sent_urls:
+                        sent_urls_for_tag = self.sent_urls[tag]
+                        unsent_urls_for_tag = [url for url in file_urls if url not in sent_urls_for_tag]
+                        if unsent_urls_for_tag:
+                            file_url = unsent_urls_for_tag[0]
+                            self.sent_urls[tag].append(file_url)
                         else:
-                            embed = discord.Embed(
-                                title=f"You searched for {tag}.",
-                                color=discord.Colour(0x9FC6F6)
-                            )
-                            embed.set_image(url=file_url)
+                            await ctx.respond("No new images found for this tag.", ephemeral=True)
+                            return
+                    else:
+                        file_url = file_urls[0]
+                        self.sent_urls[tag] = [file_url]
 
-                            await ctx.respond(embed=embed)
+                    if file_url.endswith(".mp4"):
+                        await ctx.respond(f"[You searched for {tag}.]({file_url})")
+                    else:
+                        embed = discord.Embed(
+                            title=f"You searched for {tag}.",
+                            color=discord.Colour(0x9FC6F6)
+                        )
+                        embed.set_image(url=file_url)
+
+                        await ctx.respond(embed=embed)
                 else:
                     await ctx.respond("No new images found for this tag.", ephemeral=True)
             else:
@@ -58,4 +68,3 @@ class R34(commands.Cog):
 
 def setup(bot):
     bot.add_cog(R34(bot))
-    
