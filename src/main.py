@@ -31,6 +31,11 @@ bot.load_extension('commands.slash.r36')
 bot.load_extension('commands.slash.sfw')
 
 bot.load_extension('commands.slash.not_sfw')
+
+bot.load_extension('commands.slash.help')
+
+bot.load_extension('commands.slash.contact')
+
 #TOEKN
 
 
