@@ -81,7 +81,11 @@ async def on_ready():
     
     channel = bot.get_channel(READY_CHANNEL_ID)
     if channel:
-        embed = discord.Embed(title="READY", color=discord.Color.white())
+        embed = discord.Embed(
+            title="READY",
+            description=str("Bubble is Ready"),
+            color=discord.Color(int("0x9FC6F6", 16))
+        )
         await channel.send(embed=embed)
     else:
         print("Channel not found.")
