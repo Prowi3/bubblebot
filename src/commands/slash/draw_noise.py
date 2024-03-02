@@ -74,9 +74,12 @@ class DrawNoise(commands.Cog):
 
                 gradient_image = ImageChops.soft_light(gradient_image, text_image)
                 
-            await ctx.respond("Here's your image.")
             gradient_image.save('gradient.png')
-            await ctx.send(file=discord.File('gradient.png'))
+
+            embed = discord.Embed(title="Here's your image.", color=0x9FC6F6)
+            embed.set_image(file=discord.File('gradient.png'))
+            await ctx.respond(embed=embed)
+
             is_rendering = False
         
         except Exception as e:
