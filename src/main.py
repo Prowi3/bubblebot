@@ -29,7 +29,8 @@ slash_commands = [
     'commands.slash.r36',
     'commands.slash.help',
     'commands.slash.contact',
-    'commands.slash.image'
+    'commands.slash.image',
+    'commands.slash.rmusic'
 ]
 
 for command in slash_commands:
