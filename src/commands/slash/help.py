@@ -64,7 +64,15 @@ class Help(commands.Cog):
         thumbnail_url = "https://cdn.discordapp.com/attachments/1142411437688500274/1146230560205840446/output-onlinegiftools_2.gif"
         embed1.set_thumbnail(url=thumbnail_url)
 
-        embed1.add_field(name="__**No Help Yet**__", value="**╰→** i will add them later.")
+        embed1.add_field(name="/__**cta**__", value="**╰→** Get a Random image of a Cat")
+        embed1.add_field(name="/__**draw_noise**__", value="**╰→** Create a picture with text by using random noise.")
+        embed1.add_field(name="/__**help**__", value="**╰→** This command Will show this message")
+        embed1.add_field(name="/__**image nsfw**__", value="**╰→** Get a Random 'Explicit' Anmie image from (yande.re), This command only works in NSfW Channels")
+        embed1.add_field(name="/__**image sfw**__", value="**╰→** Get a Random Safe image from (yande.re)")
+        embed1.add_field(name="/__**petpet**__", value="**╰→** Use this Command to Pet User PFPs, Server emotes, or Image URLs")
+        embed1.add_field(name="/__**pfp**__", value="**╰→** Get the Profile Picture of the Selected Member")
+        embed1.add_field(name="/__**r36**__", value="**╰→** Get a Random image from (Rule.34) Based on a tag, This command only works in NSfW Channels")
+        
         embed1.set_footer(text="1/3")
 
         p.pages[0] = str(embed1.to_dict())
@@ -72,18 +80,18 @@ class Help(commands.Cog):
         # Page 2
         embed2 = discord.Embed(
             title="/draw_noise Help",
-            description="Here's a list of what each parameter does:",
+            description="Here's a list of what each Option does:",
             color=discord.Color(0xFFFFFF)
         )
 
         thumbnail_url2 = "https://cdn.discordapp.com/attachments/1142411437688500274/1149559291313922098/New_Project_341_D93B16A.gif"
         embed2.set_thumbnail(url=thumbnail_url2)
 
-        embed2.add_field(name="1- **Octaves**:", value="You can vary the number of octaves to control the level of detail in the noise. Higher octaves create more intricate patterns, Values around 1-10 are recommend.")
-        embed2.add_field(name="2- **Lacunarity**:", value="Lacunarity affects the frequency of each successive octave. Increasing it can lead to more variations in the noise.")
-        embed2.add_field(name="3- **Persistence**:", value="This parameter controls how much each successive octave contributes to the final noise. Values around 0.5 provide a balanced look, while values above 0.5 emphasize the higher octaves.")
-        embed2.add_field(name="4- **Font**:", value="Select your preferred Font")
-        embed2.add_field(name="5- **Text**:", value="Whatever you type will appear in the image unless it's some weird characters/emojis")
+        embed2.add_field(name="1- **Font**:", value="Select your favorite Font")
+        embed2.add_field(name="2- **Text**:", value="Anything you type will show up in the image. You can also use '/' to separate lines example = 'Bubble/Bot' (Emojis and emotes won't work)")
+        embed2.add_field(name="3- **Octaves**:", value="You can vary the number of octaves to control the level of detail in the noise. Higher octaves create more intricate patterns, Values around 1-10 are recommend.")
+        embed2.add_field(name="4- **Lacunarity**:", value="Lacunarity affects the frequency of each successive octave. Increasing it can lead to more variations in the noise.")
+        embed2.add_field(name="5- **Persistence**:", value="This parameter controls how much each successive octave contributes to the final noise. Values around 0.5 provide a balanced look, while values above 0.5 emphasize the higher octaves.")
 
         embed2.set_footer(text="2/3")
         p.pages[1] = str(embed2.to_dict())
