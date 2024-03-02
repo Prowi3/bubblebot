@@ -1,11 +1,14 @@
 import discord
-from discord.ext import commands
+
 import httpx
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont, ImageChops
-from noise import pnoise2
 import random
 import math
+
+from noise import pnoise2
+from discord import option
+from discord.ext import commands
+from PIL import Image, ImageDraw, ImageFont, ImageChops
 
 fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'DancingScript-Bold', 'Rubik-Bold', 'Arial-Black']
 is_rendering = False
@@ -15,6 +18,11 @@ class DrawNoise(commands.Cog):
         self.bot = bot
 
     @commands.slash_command(name="draw_noise", description='Draw an image using Noise')
+    @option("font", description="Select a font.")
+    @option("text", description="Enter the text here. If left empty, no text will be displayed.")
+    @option("octaves", description="Choose the octave amount, the default is 1.0")
+    @option("lacunarity", description="Choose the lacunarity amount, the default is 5.0")
+    @option("persistence", description="Choose the persistence amount, the default is to 0.5")
     async def draw_noise(self, ctx: discord.ApplicationContext,
         font: discord.Option(str, choices=fonts) = None, *, text: str = '', octaves: int = 1, lacunarity: float = 5.0, persistence: float = 0.5):
         global is_rendering

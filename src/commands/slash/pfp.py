@@ -1,5 +1,4 @@
 import discord
-from discord import option
 from discord.ext import commands
 
 class Pfp(commands.Cog):
@@ -7,7 +6,6 @@ class Pfp(commands.Cog):
         self.bot = bot
 
     @commands.slash_command(name="pfp", description="Sends the Profile Picture of the User that you select")
-    @option("user", description="blahblah")
     async def pfp(self, ctx, user: discord.Member = None):
         user = user or ctx.author
         pfp_url = user.avatar.url
