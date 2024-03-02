@@ -19,7 +19,7 @@ class DrawNoise(commands.Cog):
     @commands.slash_command(name="draw_noise", description='Draw an image using Noise')
     async def draw_noise(self, ctx: discord.ApplicationContext,
         font: discord.Option(str, description="Select a font.", choices=fonts) = None, *,
-        text: discord.Options(str = '',  description="Enter the text here. If left empty, no text will be displayed."),
+        text: discord.Option(str = '',  description="Enter the text here. If left empty, no text will be displayed."),
         octaves: int = 1, 
         lacunarity: float = 5.0, 
         persistence: float = 0.5):
