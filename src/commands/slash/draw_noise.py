@@ -74,7 +74,7 @@ class DrawNoise(commands.Cog):
 
                 gradient_image = ImageChops.soft_light(gradient_image, text_image)
             
-            embed_color = discord.colour.from_rgb(*hue_color)
+            embed_color = discord.color.from_rgb(*hue_color)
 
             gradient_image.save('gradient.png')
             
