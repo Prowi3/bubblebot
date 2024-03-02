@@ -74,15 +74,13 @@ async def on_message(message):
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
-    print(f"Bubble is in {len(bot.guilds)} servers")
     await bot.change_presence(activity=discord.Game("poker | /help"))
     
     channel = bot.get_channel(READY_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
             title="READY",
-            description=str("Bubble is Ready"),
+            description=str(f"{bot.user} is Ready and in {len(bot.guilds)} servers"),
             color=discord.Color(int("0x9FC6F6", 16))
         )
         await channel.send(embed=embed)
