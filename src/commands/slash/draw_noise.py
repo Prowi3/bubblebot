@@ -20,7 +20,7 @@ class DrawNoise(commands.Cog):
     async def draw_noise(self, ctx: discord.ApplicationContext,
         font: discord.Option(str, description="Select a font.", choices=fonts) = None, *,
         text: discord.Option(str = '',  description="Enter the text here. If left empty, no text will be displayed.") = None,
-        octaves: int = 1, 
+        octaves: discord.Oprion(int = 1, description="Choose the octave amount, the default is 1.0") = None, 
         lacunarity: float = 5.0, 
         persistence: float = 0.5):
         global is_rendering
