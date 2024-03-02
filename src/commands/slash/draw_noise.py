@@ -9,7 +9,7 @@ from noise import pnoise2
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
-fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'DancingScript-Bold', 'Rubik-Bold', 'Arial-Black']
+fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
 is_rendering = False
 
 class DrawNoise(commands.Cog):
