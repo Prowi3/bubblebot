@@ -12,7 +12,7 @@ class Image(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
-    @image.slash_command(name="sfw", description="Get a random SFW image from yande.re")
+    @image.command()
     async def sfw(self, ctx):
         await ctx.defer()
 
@@ -39,7 +39,7 @@ class Image(commands.Cog):
         else:
             await ctx.respond(f"Error fetching images. Status code: {response.status_code}", ephemeral=True)
 
-    @image.slash_command(name="nsfw", description="Get a random NSFW image from yande.re")
+    @image.command()
     async def nsfw(self, ctx):
         if ctx.channel.is_nsfw():
             await ctx.defer()
