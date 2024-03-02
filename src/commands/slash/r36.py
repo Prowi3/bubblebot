@@ -9,7 +9,7 @@ class R34(commands.Cog):
         self.bot = bot
         self.sent_urls = set()
 
-    @commands.slash_command(name="r36", description="Fetch images from R34")
+    @commands.slash_command(name="r36", description="Get random images or videos from R34")
     async def r36(self, ctx, tag: str):
         if not ctx.channel.is_nsfw():
             await ctx.respond("This command can only be used in NSFW channels.", ephemeral=True)

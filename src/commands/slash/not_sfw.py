@@ -7,7 +7,7 @@ class NotSfw(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="not_sfw", description="Fetch random NSFW image URL from yande.re")
+    @commands.slash_command(name="not_sfw", description="Get a random NSFW image from yande.re")
     async def not_sfw(self, ctx):
         if not ctx.channel.is_nsfw():
             await ctx.respond("This is the wrong channel :]", ephemeral=True)

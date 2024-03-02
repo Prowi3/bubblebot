@@ -64,22 +64,14 @@ class Help(commands.Cog):
         thumbnail_url = "https://cdn.discordapp.com/attachments/1142411437688500274/1146230560205840446/output-onlinegiftools_2.gif"
         embed1.set_thumbnail(url=thumbnail_url)
 
-        embed1.add_field(name="__**/cta**__", value="**╰→** Get a random cat picture.")
-        embed1.add_field(name="__**/draw_noise**__", value="**╰→** Generate an image using perlin noise with text")
-        embed1.add_field(name="__**/pfp**__", value="**╰→** Fetch a user's profile picture.")
-        embed1.add_field(name="__**/not_sfw**__", value="**╰→** Get a reandom and *totally family-friendly* picture.")
-        embed1.add_field(name="__**/sfw**__", value="**╰→** Get a random safe anime picture.")
-        embed1.add_field(name="__**/pet**__", value="**╰→** Pet users, server emotes, or image URLs.")
-        embed1.add_field(name="__**BB Search**__", value="**╰→** Search for images from Google.")
-        embed1.add_field(name="__**BB Google**__", value="**╰→** High-quality image search (limited to 100 per day).")
-
+        embed1.add_field(name="__**No Help Yet**__", value="**╰→** i will add them later.")
         embed1.set_footer(text="1/3")
 
         p.pages[0] = str(embed1.to_dict())
 
         # Page 2
         embed2 = discord.Embed(
-            title="/clouds_draw Help",
+            title="/draw_noise Help",
             description="Here's a list of what each parameter does:",
             color=discord.Color(0xFFFFFF)
         )

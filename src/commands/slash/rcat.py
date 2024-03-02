@@ -5,7 +5,7 @@ class RandomCat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="cta", description="Send a random cat picture")
+    @commands.slash_command(name="cta", description="Get a random cat picture")
     async def random_cat(self, ctx):
         async with httpx.AsyncClient() as client:
             response = await client.get("https://api.thecatapi.com/v1/images/search")

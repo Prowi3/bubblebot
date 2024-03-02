@@ -6,7 +6,7 @@ class Contact(commands.Cog):
         self.bot = bot
         self.target_channel_id = 1147741557001289839
 
-    @commands.slash_command(name="contact", description="Send me a message :)")
+    @commands.slash_command(name="contact", description="Send us a message :)")
     async def contacting(self, ctx, *, message):
         target_channel = self.bot.get_channel(self.target_channel_id)
         
