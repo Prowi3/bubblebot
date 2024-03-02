@@ -6,13 +6,12 @@ import random
 class Image(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.image = discord.SlashCommandGroup("image", "Get random images from yande.re")
 
-    @commands.group(name="image", description="Get random images from yande.re")
-    async def image(self, ctx):
-        if ctx.invoked_subcommand is None:
-            await ctx.send_help(ctx.command)
-
-    @image.command()
+    @image.command(
+        name="sfw",
+        description="Get a random SFW image from yande.re"
+    )
     async def sfw(self, ctx):
         await ctx.defer()
 
@@ -39,7 +38,10 @@ class Image(commands.Cog):
         else:
             await ctx.respond(f"Error fetching images. Status code: {response.status_code}", ephemeral=True)
 
-    @image.command()
+    @image.command(
+        name="nsfw",
+        description="Get a random NSFW image from yande.re"
+    )
     async def nsfw(self, ctx):
         if ctx.channel.is_nsfw():
             await ctx.defer()
@@ -57,7 +59,7 @@ class Image(commands.Cog):
 
                     embed = discord.Embed(
                         title="Random NSFW Image",
-                        colour=discord.Colour(0xFF0000)
+                        colour=discord.Colour(0x9FC6F6)
                     )
                     embed.set_image(url=file_url)
 
