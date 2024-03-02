@@ -1,5 +1,4 @@
 import discord
-
 import httpx
 import numpy as np
 import random
@@ -62,18 +61,17 @@ class DrawNoise(commands.Cog):
 
             if text:
                 draw = ImageDraw.Draw(gradient_image)
-                font_size = int(math.sqrt(width * height) / len(text)) + 25
+                font_size = int(math.sqrt(width * height) / len(text.split("/"))) + 25
                 font_path = f"miscellaneous/Fonts/{font}.ttf"
                 font = ImageFont.truetype(font_path, font_size)
                 text_width, text_height = draw.textsize(text, font=font)
                 x = round((width - text_width) / 2) + 1
-                y = round((height - text_height) / 2) + 2
-                text_image = Image.new('RGB', (width, height))
-                text_draw = ImageDraw.Draw(text_image)
-                text_draw.text((x, y), text=text, fill=(255, 255, 255), font=font)
+                y = round((height - text_height * len(text.split("/"))) / 2) + 2
+                for line in text.split("/"):
+                    text_width, text_height = draw.textsize(line, font=font)
+                    draw.text((x, y), text=line, fill=(255, 255, 255), font=font)
+                    y += text_height + 5
 
-                gradient_image = ImageChops.soft_light(gradient_image, text_image)
-            
             embed_color = discord.Color.from_rgb(*hue_color)
 
             gradient_image.save('gradient.png')
