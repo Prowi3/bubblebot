@@ -7,20 +7,25 @@ import random
 class RandomSong(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
 
     @commands.slash_command(name="random_song", description="Get a random Song from Spotify!")
     async def random_song(self, ctx):
-        spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
-        offset = random.randint(0, 1000)
+        playlist_ids = [
+            "37i9dQZF1DX4JAvHpjipBk",
+            "37i9dQZF1DWTJ7xPn4vNaz",
+        ]
+        playlist_id = random.choice(playlist_ids)
+
+        playlist = self.spotify.playlist_tracks(playlist_id, limit=50)
+        tracks = playlist['items']
         
-        results = spotify.search(q='genre:"pop"', type='track', limit=1, offset=offset)
+        random_track = random.choice(tracks)['track']
         
-        track = results['tracks']['items'][0]
-        
-        name = track['name']
-        artists = ', '.join([artist['name'] for artist in track['artists']])
-        album = track['album']['name']
-        preview_url = track['preview_url']
+        name = random_track['name']
+        artists = ', '.join([artist['name'] for artist in random_track['artists']])
+        album = random_track['album']['name']
+        preview_url = random_track['preview_url']
         
         embed = discord.Embed(title=name, description=f'By: {artists}\nAlbum: {album}', color=discord.Color.green())
         if preview_url:
