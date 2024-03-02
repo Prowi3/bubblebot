@@ -19,10 +19,10 @@ class DrawNoise(commands.Cog):
     @commands.slash_command(name="draw_noise", description='Draw an image using Noise')
     async def draw_noise(self, ctx: discord.ApplicationContext,
         font: discord.Option(str, description="Select a font.", choices=fonts), *,
-        text: discord.Option(str = '',  description="Enter your text here. emojis and emots won't work."),
-        octaves: discord.Option(int = 1, description="Choose the octave amount, the default is 1.0 (/help for more info)"), 
-        lacunarity: discord.Option(float = 5.0, description="Choose the lacunarity amount, the default is 5.0 (/help for more info)"),
-        persistence: discord.Option(float = 0.5, description="Choose the persistence amount, the default is to 0.5 (/help for more info)")
+        text: discord.Option(str = '',  description="Enter your text here. emojis and emots won't work.") = None,
+        octaves: discord.Option(int, description="Choose the octave amount, the default is 1.0 (/help for more info)") = 1, 
+        lacunarity: discord.Option(float , description="Choose the lacunarity amount, the default is 5.0 (/help for more info)") = 5.0,
+        persistence: discord.Option(float , description="Choose the persistence amount, the default is to 0.5 (/help for more info)") = 0.5
         ):
 
         global is_rendering
