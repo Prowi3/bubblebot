@@ -31,7 +31,7 @@ slash_commands = [
     'commands.slash.not_sfw',
     'commands.slash.help',
     'commands.slash.contact',
-    'commands.slash.test2'
+    'commands.slash.image'
 ]
 
 for command in slash_commands:
