@@ -78,8 +78,9 @@ class DrawNoise(commands.Cog):
                 text_image = Image.new('RGB', (width, height))
                 for line in text_lines:
                     text_width, text_height = draw.textsize(line, font=font)
+                    line_x = round((width - text_width) / 2)
                     text_draw = ImageDraw.Draw(text_image)
-                    text_draw.text((x, y), text=line, fill=(255, 255, 255), font=font)
+                    text_draw.text((line_x, y), text=line, fill=(255, 255, 255), font=font)
                     y += text_height
 
                 gradient_image = ImageChops.soft_light(gradient_image, text_image)
