@@ -76,7 +76,7 @@ class DrawNoise(commands.Cog):
                 
             gradient_image.save('gradient.png')
             
-            file = discord.File(file=discord.File('gradient.png'))
+            file = discord.File(filename="gradient.png")
             embed = discord.Embed(title="Here's your image.", color=0x9FC6F6)
             embed.set_image(url="attachment://gradient.png")
             await ctx.respond(file=file, embed=embed)
