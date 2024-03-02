@@ -63,16 +63,27 @@ class DrawNoise(commands.Cog):
                 font_size = int(math.sqrt(width * height) / len(text)) + 25
                 font_path = f"miscellaneous/Fonts/{font}.ttf"
                 font = ImageFont.truetype(font_path, font_size)
-                lines = text.split("/")
-                line_height = font.getsize(lines[0])[1] 
-                total_height = line_height * len(lines)
-
-
-                for i, line in enumerate(lines):
+                text_lines = text.split('/')
+                
+                max_text_width = 0
+                total_text_height = 0
+                for line in text_lines:
                     text_width, text_height = draw.textsize(line, font=font)
-                    x = round((width - text_width) / 2)
-                    y = round((height - total_height) / 2) + (i * line_height)
-                    draw.text((x, y), line, fill=(255, 255, 255), font=font)
+                    if text_width > max_text_width:
+                        max_text_width = text_width
+                    total_text_height += text_height
+                
+                x = round((width - max_text_width) / 2) + 1
+                y = round((height - total_text_height) / 2) + 2
+                text_image = Image.new('RGB', (width, height))
+                for line in text_lines:
+                    text_width, text_height = draw.textsize(line, font=font)
+                    text_draw = ImageDraw.Draw(text_image)
+                    text_draw.text((x, y), text=line, fill=(255, 255, 255), font=font)
+                    y += text_height
+
+                gradient_image = ImageChops.soft_light(gradient_image, text_image)
+
 
             embed_color = discord.Color.from_rgb(*hue_color)
 
