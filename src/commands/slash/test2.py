@@ -9,7 +9,7 @@ class image(commands.Cog):
 
     image = discord.SlashCommandGroup("image", "Get a Random Image")
 
-    @image.command()
+    @image.command(description="Get a random SFW image from yande.re")
     async def sfw(self, ctx):
         await ctx.defer()
 
@@ -36,7 +36,7 @@ class image(commands.Cog):
         else:
             await ctx.respond(f"Error fetching images. Status code: {response.status_code}", ephemeral=True)
 
-    @image.command()
+    @image.command(description="Get a random NSFW image from yande.re")
     async def nsfw(self, ctx):
         if not ctx.channel.is_nsfw():
             await ctx.respond("This is the wrong channel :]", ephemeral=True)
