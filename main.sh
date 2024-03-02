@@ -33,5 +33,6 @@ pip install google-api-python-client==1.8.0
 pip install py-cord
 pip install numpy
 pip install noise
+pip install spotipy
 
 python3 src/main.py
