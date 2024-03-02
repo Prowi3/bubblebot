@@ -27,8 +27,6 @@ slash_commands = [
     'commands.slash.pfp',
     'commands.slash.pet',
     'commands.slash.r36',
-    'commands.slash.sfw',
-    'commands.slash.not_sfw',
     'commands.slash.help',
     'commands.slash.contact',
     'commands.slash.image'
