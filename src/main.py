@@ -29,7 +29,8 @@ slash_commands = [
     'commands.slash.r36',
     'commands.slash.help',
     'commands.slash.contact',
-    'commands.slash.image'
+    'commands.slash.image',
+    'commands.slash.rsong'
 ]
 
 for command in slash_commands:
@@ -67,7 +68,7 @@ async def mentions(message):
 
 @bot.event
 async def on_message(message):
-    await bot.process_commands(message)  # This line is important for processing commands
+    await bot.process_commands(message)
     await bubble_call(message)
     await poke(message)
     await mentions(message)
