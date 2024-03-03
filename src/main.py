@@ -13,7 +13,8 @@ bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 prefix_commands = [
     "commands.prefix.test",
     "commands.prefix.google_images",
-    "commands.prefix.google_images_low"
+    "commands.prefix.google_images_low",
+    "commands.prefix.status"
 ]
 
 for command in prefix_commands:
