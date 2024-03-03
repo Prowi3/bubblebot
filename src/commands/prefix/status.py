@@ -1,12 +1,12 @@
-import os, sys
+import os,sys
 import subprocess
 from discord.ext import commands
 
 @commands.command()
-async def update(ctx):
-    await ctx.channel.send("Updating...")
-    subprocess.run(['git', 'pull'], check=True)
-    await ctx.channel.send("Update complete. Rebooting...")
+async def update(ctx, folder_name: str):
+    subprocess.run(['git', 'fetch', 'origin', 'main'], check=True)
+    subprocess.run(['git', 'checkout', 'origin/main', folder_name], check=True)
+    await ctx.channel.send(f"Folder '{src}' updated. Rebooting...")
     os.execv(sys.executable, ['python'] + sys.argv)
 
 def setup(bot):
