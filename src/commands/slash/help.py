@@ -72,7 +72,8 @@ class Help(commands.Cog):
         embed1.add_field(name="/__**petpet**__", value="**╰→** Use this Command to Pet User PFPs, Server emotes, or Image URLs")
         embed1.add_field(name="/__**pfp**__", value="**╰→** Get the Profile Picture of the Selected Member")
         embed1.add_field(name="/__**r36**__", value="**╰→** Get a Random image from (Rule.34) Based on a tag, This command only works in NSfW Channels")
-        
+        embed1.add_field(name="/__**random_song**__", value="**╰→** Get a Song from Spotify")        
+
         embed1.set_footer(text="1/3")
 
         p.pages[0] = str(embed1.to_dict())
