@@ -19,9 +19,9 @@ class RandomSong(commands.Cog):
 
         if results['tracks']['items']:
             track_url = results['tracks']['items'][0]['external_urls']['spotify']
-            await ctx.send(f"Here's a random song from Spotify: {track_url}")
+            await ctx.respond(f"Here's a random song from Spotify: {track_url}")
         else:
-            await ctx.send("No results found. Try again later.")
+            await ctx.respond("No results found. Try again later.")
 
 def setup(bot):
     bot.add_cog(RandomSong(bot))
