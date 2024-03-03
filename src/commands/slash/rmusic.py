@@ -1,4 +1,5 @@
 import discord
+import os
 from discord.ext import commands
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -7,7 +8,8 @@ import random
 class RandomSong(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
+        client_id = os.environ['SPOT']
+        self.spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(client_id=client_id))
 
     @commands.slash_command(name="random_song", description="Get a random Song from Spotify!")
     async def random_song(self, ctx):
