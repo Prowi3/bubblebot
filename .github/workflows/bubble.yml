@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TOKEN: ${{secrets.TOKEN}}
+      SPOTID: ${{secrets.SPOTID }}
+      SPOTSEC: ${{secrets.SPOTSEC }}
       GIT: ${{secrets.GIT}}
       GLSEARCH: ${{secrets.GLSEARCH}}
       REPO: ${{ github.repository }}
