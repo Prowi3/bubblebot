@@ -21,7 +21,7 @@ class DrawLiquid(commands.Cog):
 
             file = discord.File(file_path)
 
-            embed = discord.Embed(title="Here's your blank canvas.", color=discord.Color.from_rgb(255, 255, 255))
+            embed = discord.Embed(title="Here's your image", color=discord.Color.from_rgb(255, 255, 255))
             embed.set_image(url="attachment://lq.png")
 
             await ctx.respond(file=file, embed=embed)
