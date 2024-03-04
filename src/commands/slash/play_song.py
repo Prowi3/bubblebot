@@ -31,8 +31,7 @@ class PlaySong(commands.Cog):
                     info = ydl.extract_info(song_url, download=False)
                     url = info['url']
 
-                source = discord.PCMVolumeTransformer(discord.AudioSource(url))
-                vc.play(source)
+                vc.play(discord.FFmpegOpusAudio(url))
 
                 await ctx.respond("Now playing: {}".format(info['title']))
 
