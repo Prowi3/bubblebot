@@ -24,6 +24,7 @@ for command in prefix_commands:
 
 slash_commands = [
     'commands.slash.draw_noise',
+    'commands.slash.draw_liquid',
     'commands.slash.rcat',
     'commands.slash.pfp',
     'commands.slash.pet',
