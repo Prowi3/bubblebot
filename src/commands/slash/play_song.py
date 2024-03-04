@@ -24,16 +24,16 @@ class PlaySong(commands.Cog):
 
                 ydl_opts = {
                     'format': 'bestaudio/best',
-                    'postprocessors': [{
-                        'key': 'FFmpegExtractAudio',
-                        'preferredcodec': 'mp3',
-                        'preferredquality': '192',
-                    }],
+                    'extractaudio': True,
+                    'audioformat': 'mp3',
+                    'outtmpl': '%(id)s',
+                    'noplaylist': True,
                 }
                 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(song_url, download=False)
-                    url = info['formats'][0]['url']
-                    vc.play(discord.FFmpegPCMAudio(url))
+                    url = info['url']
+
+                vc.play(discord.FFmpegPCMAudio(url))
 
         elif option.lower() == "cancel":
             if ctx.voice_client and ctx.voice_client.channel == voice_channel and ctx.voice_client.is_playing():
@@ -45,7 +45,7 @@ class PlaySong(commands.Cog):
             if ctx.voice_client and ctx.voice_client.channel == voice_channel:
                 await ctx.voice_client.disconnect()
             else:
-                await ctx.send("Bubble is not currently in the specified voice channel.")
+                await ctx.send("Bubble not currently in the specified voice channel.")
 
         else:
             await ctx.send("Invalid option. Available options are: play, cancel, leave")
