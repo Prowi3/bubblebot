@@ -20,7 +20,7 @@ class DlSong(commands.Cog):
                 await ctx.send(content="Done!", file=discord.File(f, filename=f"{yt.title}.mp3"))
 
         except Exception as e:
-            await ctx.send(f"An error occurred: {e}")
+            await ctx.respond(f"An error occurred: {e}")
 
 def setup(bot):
     bot.add_cog(DlSong(bot))
