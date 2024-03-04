@@ -18,6 +18,8 @@ class DrawLiquid(commands.Cog):
         swirl_radius: discord.Option(float, description="Radius of the swirl distortion") = 500,
         ):
 
+        await ctx.defer()
+
         width = 1080
         height = 1080
 
