@@ -1,7 +1,8 @@
 import discord
 from discord.ext import commands
-import yt_dlp as youtube_dl
+import youtube_dl
 import ffmpeg
+import shutil
 
 class DlSong(commands.Cog):
     def __init__(self, bot):
@@ -19,6 +20,8 @@ class DlSong(commands.Cog):
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
+            'ffmpeg_location': shutil.which('ffmpeg'),
+            'ffprobe_location': shutil.which('ffprobe'),
         }
 
         try:
@@ -26,10 +29,8 @@ class DlSong(commands.Cog):
                 info = ydl.extract_info(url, download=True)
                 filename = f"{info['title']}.mp3"
 
-            ffmpeg.input(filename).output(f"{info['title']}.mp3").run(overwrite_output=True)
-
-            with open(f"{info['title']}.mp3", "rb") as f:
-                await ctx.send(content="Done!", file=discord.File(f, filename=f"{info['title']}.mp3"))
+            with open(filename, "rb") as f:
+                await ctx.send(content="Done!", file=discord.File(f, filename=filename))
 
         except Exception as e:
             await ctx.respond(f"An error occurred: {e}")
