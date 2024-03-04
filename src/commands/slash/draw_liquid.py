@@ -1,13 +1,13 @@
 import discord
 from discord.ext import commands
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageChops
 import random
 import math
 
 class DrawLiquid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        
+    
     fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
 
     @commands.slash_command(name="draw_liquid", description='Not Ready Yet')
@@ -79,9 +79,15 @@ class DrawLiquid(commands.Cog):
                 
                 x = round((width - max_text_width) / 2) + 1
                 y = round((height - total_text_height) / 2) + 2
+                text_image = Image.new('RGB', (width, height))
                 for line in text_lines:
-                    draw.text((x, y), line, fill=(255, 255, 255), font=font)
+                    text_width, text_height = draw.textsize(line, font=font)
+                    line_x = round((width - text_width) / 2)
+                    text_draw = ImageDraw.Draw(text_image)
+                    text_draw.text((line_x, y), text=line, fill=(255, 255, 255), font=font)
                     y += text_height
+                
+                gradient_image = ImageChops.soft_light(gradient_image, text_image)
 
             file_path = 'lq.png'
             gradient_image.save(file_path)
