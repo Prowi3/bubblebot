@@ -58,7 +58,7 @@ class DrawLiquid(commands.Cog):
             await ctx.respond(file=file, embed=embed)
         
         except Exception as e:
-            await ctx.respond(f"An error occurred: {str(e)}")
+            await ctx.respond(f"An error occurred: {str(e)}", ephemeral=True)
 
 def setup(bot):
     bot.add_cog(DrawLiquid(bot))
