@@ -12,3 +12,4 @@ requests
 spotipy
 youtube_dl
 pynacl
+yt_dlp

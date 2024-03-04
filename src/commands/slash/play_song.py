@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
-import youtube_dl
+from youtube_dl import YoutubeDL
+import asyncio
+import yt_dlp
 
 class PlaySong(commands.Cog):
     def __init__(self, bot):
@@ -9,7 +11,7 @@ class PlaySong(commands.Cog):
     @commands.slash_command(name="play_song", description="Play songs in a voice channel")
     async def play_song(self, ctx, option: str, voice_channel: discord.VoiceChannel, song_url: str = None):
         if not voice_channel.permissions_for(ctx.guild.me).connect or not voice_channel.permissions_for(ctx.guild.me).speak:
-            await ctx.send("I don't have permission to join or speak in the selected voice channel.")
+            await ctx.respond("I don't have permission to join or speak in the selected voice channel.")
             return
 
         if option.lower() == "play":
@@ -19,9 +21,6 @@ class PlaySong(commands.Cog):
                 vc = ctx.voice_client
 
             if song_url:
-                if vc.is_playing():
-                    vc.stop()
-
                 ydl_opts = {
                     'format': 'bestaudio/best',
                     'extractaudio': True,
@@ -29,7 +28,7 @@ class PlaySong(commands.Cog):
                     'outtmpl': '%(id)s',
                     'noplaylist': True,
                 }
-                with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(song_url, download=False)
                     url = info['url']
 
@@ -39,16 +38,16 @@ class PlaySong(commands.Cog):
             if ctx.voice_client and ctx.voice_client.channel == voice_channel and ctx.voice_client.is_playing():
                 ctx.voice_client.stop()
             else:
-                await ctx.send("No song is currently playing in the specified voice channel.")
+                await ctx.respond("No song is currently playing in the specified voice channel.")
 
         elif option.lower() == "leave":
             if ctx.voice_client and ctx.voice_client.channel == voice_channel:
                 await ctx.voice_client.disconnect()
             else:
-                await ctx.send("Bubble not currently in the specified voice channel.")
+                await ctx.respond("Bot is not currently in the specified voice channel.")
 
         else:
-            await ctx.send("Invalid option. Available options are: play, cancel, leave")
+            await ctx.respond("Invalid option. Available options are: play, cancel, leave")
 
 def setup(bot):
     bot.add_cog(PlaySong(bot))
