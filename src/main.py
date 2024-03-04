@@ -31,7 +31,8 @@ slash_commands = [
     'commands.slash.help',
     'commands.slash.contact',
     'commands.slash.image',
-    'commands.slash.rsong'
+    'commands.slash.rsong',
+    'commands.slash.ytdl'
 ]
 
 for command in slash_commands:
