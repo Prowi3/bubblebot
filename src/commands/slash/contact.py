@@ -14,7 +14,7 @@ class Contact(commands.Cog):
 
         await target_channel.send(formatted_message)
 
-        await ctx.respond("message successfully sent! thank you for your feedback.", ephemeral=True)
+        await ctx.respond("message has been sent! thank you for your feedback.", ephemeral=True)
 
 def setup(bot):
     bot.add_cog(Contact(bot))
