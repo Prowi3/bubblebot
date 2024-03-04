@@ -8,7 +8,7 @@ class MusicPlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="play_song", description="Play a song from a YouTube URL")
+    @commands.slash_command(name="play", description="Play a song from a YouTube URL")
     async def play_song(self, ctx, url: str, channel: discord.VoiceChannel):
         try:
             yt = YouTube(url)
@@ -21,7 +21,7 @@ class MusicPlayer(commands.Cog):
             if voice_client.is_playing():
                 voice_client.stop()
 
-            audio_source = discord.PCMVolumeTransformer(discord.FFmpegOpusAudio(f"audio/{filename}"))
+            audio_source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(f"audio/{filename}"))
             voice_client.play(audio_source)
 
             while voice_client.is_playing():
