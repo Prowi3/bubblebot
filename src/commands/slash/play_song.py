@@ -21,10 +21,11 @@ class PlaySong(commands.Cog):
             self.voice = None
 
     @commands.slash_command(name="play_song", description="Download a song from a YouTube URL")
-    async def play_song(self, ctx, option: str, vc_name: str, url: str):
+    async def play_song(self, ctx, option: str, vc_name: discord.VoiceChannel, url: str):
         if option.lower() == "play":
-            await self.join_vc(ctx, vc_name)
-            
+            await self.join_vc(ctx, vc_name.name)
+            await ctx.respond(content=f"Playing in {vc_name.name}...")
+
             try:
                 yt = YouTube(url)
                 stream = yt.streams.get_audio_only()
@@ -32,7 +33,7 @@ class PlaySong(commands.Cog):
                 stream.download(filename=filename)
 
                 with open(filename, "rb") as f:
-                    await ctx.respond(content=f"Done! Now playing {yt.title}...", file=discord.File(f, filename=f"{yt.title}.mp3"))
+                    await ctx.respond(content=f"Done! Now playing {yt.title} in {vc_name.name}...", file=discord.File(f, filename=f"{yt.title}.mp3"))
 
                 if ctx.voice_client:
                     ctx.voice_client.play(discord.FFmpegPCMAudio(filename))
@@ -52,6 +53,11 @@ class PlaySong(commands.Cog):
 
         else:
             await ctx.respond(content="Invalid option. Available options: play, cancel, leave")
+
+    @play_song.error
+    async def play_song_error(self, ctx, error):
+        if isinstance(error, commands.ChannelNotFound):
+            await ctx.respond("Please provide a valid voice channel.")
 
 def setup(bot):
     bot.add_cog(PlaySong(bot))
