@@ -10,5 +10,5 @@ pillow==9.5.0
 py-cord
 requests
 spotipy
-pytube
+youtube_dl
 pynacl

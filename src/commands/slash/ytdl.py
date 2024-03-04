@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from pytube import YouTube
+import youtube_dl
 
 class DlSong(commands.Cog):
     def __init__(self, bot):
@@ -10,14 +10,23 @@ class DlSong(commands.Cog):
     async def dl_song(self, ctx, url: str):
         await ctx.respond(content="Downloading...")
 
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': '%(title)s.%(ext)s',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+        }
+
         try:
-            yt = YouTube(url)
-            stream = yt.streams.get_audio_only()
-            filename = f"{yt.title}.mp3"
-            stream.download(filename=filename)
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = f"{info['title']}.mp3"
 
             with open(filename, "rb") as f:
-                await ctx.send(content="Done!", file=discord.File(f, filename=f"{yt.title}.mp3"))
+                await ctx.send(content="Done!", file=discord.File(f, filename=filename))
 
         except Exception as e:
             await ctx.respond(f"An error occurred: {e}")
