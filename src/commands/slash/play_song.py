@@ -2,15 +2,16 @@ import discord
 from discord.ext import commands
 from pytube import YouTube
 import asyncio
+import os
 
 class MusicPlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="play_song", description="Play a song from a YouTube URL")
+    @commands.slash_command(name="play", description="Play a song from a YouTube URL")
     async def play_song(self, ctx, url: str, channel: discord.VoiceChannel):
         try:
-
+            
             yt = YouTube(url)
             stream = yt.streams.filter(only_audio=True).first()
             filename = f"{yt.title}.mp3"
@@ -20,12 +21,15 @@ class MusicPlayer(commands.Cog):
 
             if voice_client.is_playing():
                 voice_client.stop()
-            voice_client.play(discord.FFmpegPCMAudio(f"audio/{filename}"))
+            source = discord.FFmpegPCMAudio(executable="ffmpeg", source=f"audio/{filename}")
+            voice_client.play(source)
 
             while voice_client.is_playing():
                 await asyncio.sleep(1)
 
             await voice_client.disconnect()
+
+            os.remove(f"audio/{filename}")
 
         except Exception as e:
             await ctx.respond(f"An error occurred: {e}")
