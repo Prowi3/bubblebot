@@ -11,10 +11,10 @@ class DrawLiquid(commands.Cog):
     @commands.slash_command(name="draw_liquid", description='Not Ready Yet')
     async def draw_liquid(self, ctx: discord.ApplicationContext,
         *,
-        gradient_size: discord.Option(int, description="Size of the gradient (radius of the circle)") = 850,
+        gradient_size: discord.Option(int, description="Size of the gradient (radius of the circle)") = 900,
         wave_amplitude: discord.Option(float, description="Amplitude of the wave distortion") = 150,
         wave_spacing: discord.Option(float, description="Spacing between waves") = 125,
-        swirl_strength: discord.Option(float, description="Strength of the swirl distortion") = 0.05,
+        swirl_strength: discord.Option(float, description="Strength of the swirl distortion") = 6,
         swirl_radius: discord.Option(float, description="Radius of the swirl distortion") = 500,
         ):
 
