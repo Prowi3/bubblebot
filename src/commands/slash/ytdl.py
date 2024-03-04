@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-import yt-dlp as youtube_dl
+import yt_dlp as youtube_dl
 import ffmpeg
 import shutil
 
