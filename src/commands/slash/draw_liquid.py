@@ -11,9 +11,11 @@ class DrawLiquid(commands.Cog):
     @commands.slash_command(name="draw_liquid", description='Not Ready Yet')
     async def draw_liquid(self, ctx: discord.ApplicationContext,
         *,
-        gradient_size: discord.Option(int, description="Size of the gradient (radius of the circle)") = 500,
-        wave_amplitude: discord.Option(float, description="Amplitude of the wave distortion") = 10,
-        wave_spacing: discord.Option(float, description="Spacing between waves") = 50,
+        gradient_size: discord.Option(int, description="Size of the gradient (radius of the circle)") = 850,
+        wave_amplitude: discord.Option(float, description="Amplitude of the wave distortion") = 150,
+        wave_spacing: discord.Option(float, description="Spacing between waves") = 125,
+        swirl_strength: discord.Option(float, description="Strength of the swirl distortion") = 0.05,
+        swirl_radius: discord.Option(float, description="Radius of the swirl distortion") = 500,
         ):
 
         width = 1080
@@ -34,6 +36,19 @@ class DrawLiquid(commands.Cog):
                     g = int(center_color[1] * normalized_distance)
                     b = int(center_color[2] * normalized_distance)
                     gradient_image.putpixel((x, y), (r, g, b))
+                    
+            swirl_image = gradient_image.copy()
+            for y in range(height):
+                for x in range(width):
+                    dx = x - width / 2
+                    dy = y - height / 2
+                    r = math.sqrt(dx ** 2 + dy ** 2)
+                    angle = math.atan2(dy, dx)
+                    angle += swirl_strength * r / swirl_radius
+                    new_x = width / 2 + r * math.cos(angle)
+                    new_y = height / 2 + r * math.sin(angle)
+                    if 0 <= new_x < width and 0 <= new_y < height:
+                        gradient_image.putpixel((x, y), swirl_image.getpixel((int(new_x), int(new_y))))
 
             file_path = 'lq.png'
             gradient_image.save(file_path)
