@@ -12,3 +12,4 @@ requests
 spotipy
 yt-dlp
 pynacl
+ffmpeg-python
