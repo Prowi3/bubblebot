@@ -1,42 +1,49 @@
 import discord
 from discord.ext import commands
 from pytube import YouTube
+import asyncio
 
 class PlaySong(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.voice = None
 
-    async def join_vc(self, ctx, vc_name):
-        if ctx.voice_client:
-            if ctx.voice_client.channel.name == vc_name:
-                return
-            await ctx.voice_client.move_to(ctx.guild.get_channel(vc_name))
-        else:
-            self.voice = await ctx.guild.get_channel(vc_name).connect()
+    async def join_vc(self, ctx, vc_id):
+        try:
+            channel = self.bot.get_channel(vc_id)
+            if channel:
+                self.voice = await channel.connect()
+        except Exception as e:
+            print(f"Error joining voice channel: {e}")
 
     async def leave_vc(self, ctx):
-        if ctx.voice_client:
-            await ctx.voice_client.disconnect()
-            self.voice = None
+        try:
+            if ctx.voice_client:
+                await ctx.voice_client.disconnect()
+                self.voice = None
+        except Exception as e:
+            print(f"Error leaving voice channel: {e}")
 
     @commands.slash_command(name="play_song", description="Download a song from a YouTube URL")
-    async def play_song(self, ctx, option: str, vc_name: discord.VoiceChannel, url: str):
+    async def play_song(self, ctx, option: str, vc_id: int, url: str):
         if option.lower() == "play":
-            await self.join_vc(ctx, vc_name.name)
-            await ctx.respond(content=f"Playing in {vc_name.name}...")
-
             try:
+                await self.join_vc(ctx, vc_id)
+                await ctx.respond(content=f"Playing in <#{vc_id}>...")
+
                 yt = YouTube(url)
                 stream = yt.streams.get_audio_only()
                 filename = f"{yt.title}.mp3"
                 stream.download(filename=filename)
 
-                with open(filename, "rb") as f:
-                    await ctx.respond(content=f"Done! Now playing {yt.title} in {vc_name.name}...", file=discord.File(f, filename=f"{yt.title}.mp3"))
-
                 if ctx.voice_client:
                     ctx.voice_client.play(discord.FFmpegPCMAudio(filename))
+
+                await asyncio.sleep(5)
+
+                with open(filename, "rb") as f:
+                    await ctx.respond(content=f"Done! Now playing {yt.title} in <#{vc_id}>...", file=discord.File(f, filename=f"{yt.title}.mp3"))
+
             except Exception as e:
                 await ctx.respond(f"An error occurred: {e}")
 
@@ -57,7 +64,7 @@ class PlaySong(commands.Cog):
     @play_song.error
     async def play_song_error(self, ctx, error):
         if isinstance(error, commands.ChannelNotFound):
-            await ctx.respond("Please provide a valid voice channel.")
+            await ctx.respond("Please provide a valid voice channel ID.")
 
 def setup(bot):
     bot.add_cog(PlaySong(bot))
