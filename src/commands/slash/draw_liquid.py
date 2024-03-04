@@ -87,7 +87,7 @@ class DrawLiquid(commands.Cog):
                     text_draw.text((line_x, y), text=line, fill=(255, 255, 255), font=font)
                     y += text_height
                 
-                gradient_image = ImageChops.soft_light(text_image, gradient_image)
+                gradient_image = ImageChops.overlay(gradient_image, text_image)
 
             file_path = 'lq.png'
             gradient_image.save(file_path)
