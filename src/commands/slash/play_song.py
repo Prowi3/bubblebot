@@ -21,7 +21,7 @@ class MusicPlayer(commands.Cog):
             if voice_client.is_playing():
                 voice_client.stop()
 
-            audio_source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(f"audio/{filename}"))
+            audio_source = discord.PCMVolumeTransformer(audio_source)
             voice_client.play(audio_source)
 
             while voice_client.is_playing():
