@@ -11,3 +11,4 @@ py-cord
 requests
 spotipy
 pytube
+pynacl
