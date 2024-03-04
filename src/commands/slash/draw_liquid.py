@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from PIL import Image, ImageDraw
 import random
+import math
 
 class DrawLiquid(commands.Cog):
     def __init__(self, bot):
@@ -14,30 +15,32 @@ class DrawLiquid(commands.Cog):
         ):
 
         width = 1080
-
         height = 1080
 
         try:
             gradient_image = Image.new('RGB', (width, height), (0, 0, 0))
 
-
             center_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
+            for y in range(height):
+                for x in range(width):
+                    
+                    distance_to_center = math.sqrt((x - width/2)**2 + (y - height/2)**2)
 
-            left = (width - gradient_size) // 2
-            top = (height - gradient_size) // 2
-            right = left + gradient_size
-            bottom = top + gradient_size
-            ellipse_coords = [(left, top), (right, bottom)]
+                    normalized_distance = distance_to_center / (gradient_size / 2)
 
+                    normalized_distance = 1 - normalized_distance
 
-            draw = ImageDraw.Draw(gradient_image)
-            draw.ellipse(ellipse_coords, fill=center_color, outline=None)
+                    normalized_distance = max(0, min(1, normalized_distance))
 
+                    r = int(center_color[0] * normalized_distance)
+                    g = int(center_color[1] * normalized_distance)
+                    b = int(center_color[2] * normalized_distance)
+
+                    gradient_image.putpixel((x, y), (r, g, b))
 
             file_path = 'lq.png'
             gradient_image.save(file_path)
-
 
             file = discord.File(file_path)
             embed = discord.Embed(title="Here's your image", color=discord.Color.from_rgb(*center_color))
