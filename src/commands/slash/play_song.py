@@ -31,7 +31,10 @@ class PlaySong(commands.Cog):
                     info = ydl.extract_info(song_url, download=False)
                     url = info['url']
 
-                vc.play(discord.FFmpegOpusAudio(url))
+                source = discord.PCMVolumeTransformer(discord.AudioSource(url))
+                vc.play(source)
+
+                await ctx.respond("Now playing: {}".format(info['title']))
 
         elif option.lower() == "cancel":
             if ctx.voice_client and ctx.voice_client.channel == voice_channel and ctx.voice_client.is_playing():
