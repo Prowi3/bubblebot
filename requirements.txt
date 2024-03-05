@@ -13,3 +13,4 @@ spotipy
 yt-dlp
 pynacl
 ffmpeg-python
+scikit-image

@@ -22,22 +22,17 @@ for command in prefix_commands:
 
 # Slash commands
 
-slash_commands = [
-    'commands.slash.draw_noise',
-    'commands.slash.draw_liquid',
-    'commands.slash.rcat',
-    'commands.slash.pfp',
-    'commands.slash.pet',
-    'commands.slash.r36',
-    'commands.slash.help',
-    'commands.slash.contact',
-    'commands.slash.image',
-    'commands.slash.rsong',
-    'commands.slash.ytdl'
-]
+commands_directory = 'commands/slash/'
 
-for command in slash_commands:
-    bot.load_extension(command)
+command_files = [file[:-3] for file in os.listdir(commands_directory) if file.endswith('.py')]
+
+for file in command_files:
+    try:
+        module_path = f'commands.slash.{file}'
+        bot.load_extension(module_path)
+        print(f"Loaded extension: {module_path}")
+    except Exception as e:
+        print(f"Failed to load extension {module_path}: {e}")
 
 
 # ETC
