@@ -35,17 +35,21 @@ for file in command_files:
         print(f"Failed to load extension {module_path}: {e}")
 
 
-# ETC
+#OTHER
 
 POKE_FILE_PATH = "miscellaneous/text files/poke.txt"
 MENTIONED_USER_ID = "<@1131529056882524212>"
 ERROR_CHANNEL_ID = 1142387860650082334
 READY_CHANNEL_ID = 1213257302455615518
 
+#bubble call
+
 async def bubble_call(message):
     if message.author.bot or not message.content.lower().startswith("bubble"):
         return
     await message.channel.send("GUH!!!!", reference=message)
+
+#silly poke
 
 async def poke(message):
     if message.author.bot or not message.content.lower().startswith("poke"):
@@ -59,6 +63,8 @@ async def poke(message):
     except Exception as e:
         await message.channel.send(f"An error occurred: {e}", reference=message)
 
+#respond to mentions
+
 async def mentions(message):
     if message.author.bot or MENTIONED_USER_ID not in message.content.lower():
         return
@@ -70,6 +76,8 @@ async def on_message(message):
     await bubble_call(message)
     await poke(message)
     await mentions(message)
+
+#activity, ready message
 
 @bot.event
 async def on_ready():
@@ -85,6 +93,8 @@ async def on_ready():
         await channel.send(embed=embed)
     else:
         print("Channel not found.")
+
+#error handling
 
 @bot.event
 async def on_command_error(ctx, error):
