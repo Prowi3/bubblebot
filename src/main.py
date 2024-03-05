@@ -22,7 +22,7 @@ for command in prefix_commands:
 
 # Slash commands
 
-commands_directory = 'src\commands\slash'
+commands_directory = os.path.join('src', 'commands', 'slash')
 
 command_files = [file[:-3] for file in os.listdir(commands_directory) if file.endswith('.py')]
 
