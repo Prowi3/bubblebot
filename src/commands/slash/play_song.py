@@ -22,11 +22,10 @@ class Play(commands.Cog):
         if cancel:
             if self.voice_client and self.voice_client.is_playing():
                 self.voice_client.stop()
-                await ctx.respond("Song canceled.")
-            if self.voice_client:
                 await self.voice_client.disconnect()
                 self.voice_client = None
                 self.voice_channel = None
+                await ctx.respond("Song canceled.")
             else:
                 await ctx.respond("No song is currently playing.")
             return
@@ -59,6 +58,7 @@ class Play(commands.Cog):
                 filename = f"{info['title']}.opus"
 
             source = discord.FFmpegOpusAudio(filename)
+            source.cleanup()
             volume_adjusted = discord.PCMVolumeTransformer(source, volume=0.5)
             self.voice_client.play(volume_adjusted)
 
