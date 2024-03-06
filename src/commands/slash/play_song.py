@@ -3,6 +3,7 @@ from discord.ext import commands
 import yt_dlp as youtube_dl
 import shutil
 import asyncio
+import os
 
 class Play(commands.Cog):
     def __init__(self, bot):
@@ -35,15 +36,18 @@ class Play(commands.Cog):
             return
 
         try:
-            if self.voice_client is None or not self.voice_client.is_connected():
-                self.voice_client = await channel.connect()
-                self.voice_channel = channel
+            if self.voice_client is not None:
+                await self.voice_client.disconnect()
+            
+            self.voice_client = await channel.connect()
+            self.voice_channel = channel
 
             ydl_opts = {
                 'format': 'bestaudio/best',
                 'outtmpl': '%(title)s.%(ext)s',
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'opus',
                     'preferredquality': '192',
                 }],
                 'ffmpeg_location': shutil.which('ffmpeg'),
@@ -52,13 +56,12 @@ class Play(commands.Cog):
 
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                filename = f"{info['title']}.%(ext)s"
+                filename = f"{info['title']}.opus"
 
             source = discord.FFmpegOpusAudio(filename)
-            volume_adjusted = discord.PCMVolumeTransformer(source, volume=0.5)
-            self.voice_client.play(volume_adjusted)
+            self.voice_client.play(source, volume=0.5)
 
-            await ctx.respond(f"Playing ({info['title']}) in {channel.name}.")
+            await ctx.respond(f"Playing  *{info['title']}*  in {channel.name}.")
 
         except Exception as e:
             await ctx.respond(f"An error occurred: {e}")
