@@ -7,14 +7,14 @@ import math
 class DrawLiquid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        
+
     fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
 
     @commands.slash_command(name="draw_liquid", description='Not Ready Yet')
     async def draw_liquid(self, ctx: discord.ApplicationContext,
         *,
-                font: discord.Option(str, description="Select a font.", choices=fonts) = "Roboto-Black",
-        text: discord.Option(str, description="Enter your text here. Use '/' to split lines. Emojis and emoticons won't work.") = None,
+        font: discord.Option(str, description="Select a font.", choices=fonts) = "Roboto-Black",
+        text: discord.Option(str, description="Enter your text here. Use '/' to split lines. Emojis and emotes won't work.") = None,
         gradient_size: discord.Option(int, description="Size of the gradient (radius of the circle)") = 900,
         wave_amplitude: discord.Option(float, description="Amplitude of the wave distortion") = 150,
         wave_spacing: discord.Option(float, description="Spacing between waves") = 125,
@@ -79,15 +79,15 @@ class DrawLiquid(commands.Cog):
                 
                 x = round((width - max_text_width) / 2) + 1
                 y = round((height - total_text_height) / 2) + 2
-                text_image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+                text_image = Image.new('L', (width, height), color=0)
                 text_draw = ImageDraw.Draw(text_image)
                 for line in text_lines:
                     text_width, text_height = draw.textsize(line, font=font)
                     line_x = round((width - text_width) / 2)
-                    text_draw.text((line_x, y), text=line, fill=(255, 255, 255, 255), font=font)
+                    text_draw.text((line_x, y), text=line, fill=255, font=font)
                     y += text_height
                 
-                gradient_image = Image.blend(gradient_image, text_image, 0.5)
+                gradient_image.paste((255, 255, 255), (0, 0), text_image)
 
             file_path = 'lq.png'
             gradient_image.save(file_path)
