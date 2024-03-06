@@ -57,10 +57,8 @@ class Play(commands.Cog):
                 info = ydl.extract_info(url, download=True)
                 filename = f"{info['title']}.opus"
 
-            source = discord.FFmpegOpusAudio(filename)
-            source.cleanup()
-            volume_adjusted = discord.PCMVolumeTransformer(source, volume=0.5)
-            self.voice_client.play(volume_adjusted)
+            source = discord.FFmpegOpusAudio(filename, executable="ffmpeg")
+            self.voice_client.play(source)
 
             await ctx.respond(f"Playing *{info['title']}* in {channel.name}.")
 
