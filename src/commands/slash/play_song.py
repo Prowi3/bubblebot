@@ -59,9 +59,10 @@ class Play(commands.Cog):
                 filename = f"{info['title']}.opus"
 
             source = discord.FFmpegOpusAudio(filename)
-            self.voice_client.play(source, volume=0.5)
+            volume_adjusted = discord.PCMVolumeTransformer(source, volume=0.5)
+            self.voice_client.play(volume_adjusted)
 
-            await ctx.respond(f"Playing  *{info['title']}*  in {channel.name}.")
+            await ctx.respond(f"Playing *{info['title']}* in {channel.name}.")
 
         except Exception as e:
             await ctx.respond(f"An error occurred: {e}")
