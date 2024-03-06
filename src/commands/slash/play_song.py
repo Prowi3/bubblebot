@@ -23,6 +23,7 @@ class Play(commands.Cog):
             if self.voice_client and self.voice_client.is_playing():
                 self.voice_client.stop()
                 await ctx.respond("Song canceled.")
+                await self.voice_client.disconnect()  # Disconnect from voice channel
             else:
                 await ctx.respond("No song is currently playing.")
             return
