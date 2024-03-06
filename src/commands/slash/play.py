@@ -4,7 +4,7 @@ import yt_dlp as youtube_dl
 import shutil
 import asyncio
 
-class PlaySong(commands.Cog):
+class Play(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.voice_client = None
@@ -69,4 +69,4 @@ class PlaySong(commands.Cog):
             await ctx.respond("Please select a valid command: play, cancel, or leave.")
 
 def setup(bot):
-    bot.add_cog(PlaySong(bot))
+    bot.add_cog(Play(bot))
