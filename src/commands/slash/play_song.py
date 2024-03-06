@@ -11,7 +11,7 @@ class Play(commands.Cog):
 
     @commands.slash_command(name="play_song", description="Download and play a song from a YouTube URL")
     async def play_song(self, ctx: discord.ApplicationContext,
-                        url: discord.Option(str, description="YouTube URL of the song to play"),
+                        url: discord.Option(str, description="YouTube URL of the song to play") = "https://www.youtube.com/watch?v=h-NpsoLlMMA&pp=ygUeY2hpbGwgc2hvcnQgbG9maSBhbWJpZW50IHNvdW5k",
                         channel: discord.Option(discord.VoiceChannel, description="Select the Voice Channel that you want to play the song") = None, 
                         cancel: discord.Option(bool, description="Cancel the song that is Playing if any") = False):
 
