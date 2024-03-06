@@ -55,7 +55,7 @@ class Play(commands.Cog):
                 info = ydl.extract_info(url, download=True)
                 filename = f"{info['title']}.opus"
 
-            source = discord.opus.EncodedAudio(filename)
+            source = discord.FFmpegOpusAudio(filename)
             self.voice_client.play(source)
 
             await ctx.respond(f"Bubble is playing ({info['title']}) in {channel.name}.")
