@@ -9,7 +9,6 @@ class Play(commands.Cog):
         self.bot = bot
         self.voice_client = None
         self.voice_channel = None
-        self.song_finished = False
 
     @commands.slash_command(name="play_song", description="Download and play a song from a YouTube URL")
     async def play_song(self, ctx: discord.ApplicationContext,
@@ -21,12 +20,12 @@ class Play(commands.Cog):
 
         if cancel:
             if self.voice_client and self.voice_client.is_playing():
-                self.song_finished = False
                 self.voice_client.stop()
                 await ctx.respond("Song canceled.")
-                await self.voice_channel.disconnect()
-                self.voice_client = None
-                self.voice_channel = None
+                if self.voice_client:
+                    await self.voice_client.disconnect()
+                    self.voice_client = None
+                    self.voice_channel = None
             else:
                 await ctx.respond("No song is currently playing.")
             return
@@ -60,17 +59,6 @@ class Play(commands.Cog):
             self.voice_client.play(source)
 
             await ctx.respond(f"Bubble is playing ({info['title']}) in {channel.name}.")
-
-            while self.voice_client.is_playing():
-                await asyncio.sleep(1)
-
-            if not self.song_finished:
-                await ctx.respond("song finished")
-
-            await self.voice_channel.disconnect()
-            self.voice_client = None
-            self.voice_channel = None
-            self.song_finished = True
 
         except Exception as e:
             await ctx.respond(f"An error occurred: {e}")
