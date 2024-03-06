@@ -15,6 +15,8 @@ class Play(commands.Cog):
                         channel: discord.Option(discord.VoiceChannel, description="Select the Voice Channel that you want to play the song") = None, 
                         cancel: discord.Option(bool, description="Cancel the song that is Playing if any") = False):
 
+        await ctx.defer()
+
         if channel is None:
             await ctx.respond("Please specify a voice channel.")
             return
@@ -51,7 +53,7 @@ class Play(commands.Cog):
             source = discord.FFmpegPCMAudio(filename)
             self.voice_client.play(source)
 
-            await ctx.respond(f"Bubble is playing {info['title']} in {channel.name}.")
+            await ctx.respond(f"Bubble is playing ({info['title']}) in {channel.name}.")
 
             while self.voice_client.is_playing():
                 await asyncio.sleep(1)
