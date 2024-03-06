@@ -10,7 +10,8 @@ class DlSong(commands.Cog):
 
     @commands.slash_command(name="dl_song", description="Download a song from a YouTube URL")
     async def dl_song(self, ctx, url: str):
-        await ctx.respond(content="Downloading...")
+
+        await ctx.defer()
 
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -30,7 +31,7 @@ class DlSong(commands.Cog):
                 filename = f"{info['title']}.mp3"
 
             with open(filename, "rb") as f:
-                await ctx.send(content="Done!", file=discord.File(f, filename=filename))
+                await ctx.respond(content="Done!", file=discord.File(f, filename=filename))
 
         except Exception as e:
             await ctx.respond(f"An error occurred: {e}")
