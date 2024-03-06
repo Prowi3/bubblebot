@@ -44,8 +44,8 @@ class Play(commands.Cog):
                 'outtmpl': '%(title)s.%(ext)s',
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
+                    'preferredcodec': 'opus',
+                    'preferredquality': '256',
                 }],
                 'ffmpeg_location': shutil.which('ffmpeg'),
                 'ffprobe_location': shutil.which('ffprobe'),
@@ -53,9 +53,9 @@ class Play(commands.Cog):
 
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                filename = f"{info['title']}.mp3"
+                filename = f"{info['title']}.opus"
 
-            source = discord.FFmpegPCMAudio(filename)
+            source = discord.opus.EncodedAudio(filename)
             self.voice_client.play(source)
 
             await ctx.respond(f"Bubble is playing ({info['title']}) in {channel.name}.")
