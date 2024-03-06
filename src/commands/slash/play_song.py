@@ -8,6 +8,7 @@ class Play(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.voice_client = None
+        self.voice_channel = None
 
     @commands.slash_command(name="play_song", description="Download and play a song from a YouTube URL")
     async def play_song(self, ctx: discord.ApplicationContext,
@@ -17,22 +18,25 @@ class Play(commands.Cog):
 
         await ctx.defer()
 
-        if channel is None:
-            await ctx.respond("Please specify a voice channel.")
-            return
-
         if cancel:
             if self.voice_client and self.voice_client.is_playing():
                 self.voice_client.stop()
                 await ctx.respond("Song canceled.")
-                await self.voice_client.disconnect()  # Disconnect from voice channel
+                await self.voice_channel.disconnect()
+                self.voice_client = None
+                self.voice_channel = None
             else:
                 await ctx.respond("No song is currently playing.")
+            return
+
+        if channel is None:
+            await ctx.respond("Please specify a voice channel.")
             return
 
         try:
             if self.voice_client is None or not self.voice_client.is_connected():
                 self.voice_client = await channel.connect()
+                self.voice_channel = channel
 
             ydl_opts = {
                 'format': 'bestaudio/best',
@@ -60,7 +64,9 @@ class Play(commands.Cog):
 
             await ctx.respond("Song finished playing.")
 
-            await self.voice_client.disconnect()
+            await self.voice_channel.disconnect()
+            self.voice_client = None
+            self.voice_channel = None
 
         except Exception as e:
             await ctx.respond(f"An error occurred: {e}")
