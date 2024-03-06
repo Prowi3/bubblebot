@@ -9,10 +9,10 @@ class PlaySong(commands.Cog):
         self.bot = bot
         self.voice_client = None
 
-    @commands.slash_command(name="wuuh", description="Download and play a song from a YouTube URL")
+    @commands.slash_command(name="play_song", description="Download and play a song from a YouTube URL")
     async def play_song(self, ctx: discord.ApplicationContext,
                         url: str,
-                        channel: discord.Option(discord.ChannelType.voice, description="Select the Voice Channel that you want to play the song") = None, 
+                        channel: discord.Option(channel_type=discord.ChannelType.voice, description="Select the Voice Channel that you want to play the song") = None, 
                         play: discord.Option(bool, description="Bubble will join the vc and play the song") = False, 
                         cancel: discord.Option(bool, description="Cancel the song that is Playing if any") = False, 
                         leave: discord.Option(bool, description="Stop the Song and Leave the channel") = False):
