@@ -12,7 +12,7 @@ class Play(commands.Cog):
 
     @commands.slash_command(name="play_song", description="Download and play a song from a YouTube URL")
     async def play_song(self, ctx: discord.ApplicationContext,
-                        url: discord.Option(str, description="YouTube URL of the song to play") = "https://www.youtube.com/watch?v=h-NpsoLlMMA&pp=ygUeY2hpbGwgc2hvcnQgbG9maSBhbWJpZW50IHNvdW5k",
+                        url: discord.Option(str, description="YouTube URL of the song to play") = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
                         channel: discord.Option(discord.VoiceChannel, description="Select the Voice Channel that you want to play the song") = None, 
                         cancel: discord.Option(bool, description="Cancel the song that is Playing if any") = False):
 
@@ -22,10 +22,10 @@ class Play(commands.Cog):
             if self.voice_client and self.voice_client.is_playing():
                 self.voice_client.stop()
                 await ctx.respond("Song canceled.")
-                if self.voice_client:
-                    await self.voice_client.disconnect()
-                    self.voice_client = None
-                    self.voice_channel = None
+            if self.voice_client:
+                await self.voice_client.disconnect()
+                self.voice_client = None
+                self.voice_channel = None
             else:
                 await ctx.respond("No song is currently playing.")
             return
@@ -44,8 +44,7 @@ class Play(commands.Cog):
                 'outtmpl': '%(title)s.%(ext)s',
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'opus',
-                    'preferredquality': '256',
+                    'preferredquality': '192',
                 }],
                 'ffmpeg_location': shutil.which('ffmpeg'),
                 'ffprobe_location': shutil.which('ffprobe'),
@@ -53,7 +52,7 @@ class Play(commands.Cog):
 
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                filename = f"{info['title']}.opus"
+                filename = f"{info['title']}.%(ext)s"
 
             source = discord.FFmpegOpusAudio(filename)
             volume_adjusted = discord.PCMVolumeTransformer(source, volume=0.5)
