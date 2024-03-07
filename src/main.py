@@ -12,20 +12,19 @@ bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 
 def load_extensions(bot, directory):
     for file in os.listdir(directory):
-        if file.endswith('.py'):
+        if file.endswith(".py"):
+            module_path = f"{directory}.{file[:-3]}"
             try:
-                module_path = f'commands.{directory}.{file[:-3]}'
                 bot.load_extension(module_path)
                 print(f"Loaded extension: {module_path}")
             except Exception as e:
                 print(f"Failed to load extension {module_path}: {e}")
 
-prefix_commands = os.path.join('src', 'commands', 'prefix')
+prefix_commands = os.path.join("src", "commands", "prefix")
+slash_commands = os.path.join("src", "commands", "slash")
+
 load_extensions(bot, prefix_commands)
-
-slash_commands = os.path.join('src', 'commands', 'slash')
 load_extensions(bot, slash_commands)
-
 
 # Variables
 
