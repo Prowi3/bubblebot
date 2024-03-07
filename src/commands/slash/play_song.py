@@ -36,19 +36,20 @@ class Play(commands.Cog):
 
         try:
             if self.voice_client is not None:
-                await self.voice_client.disconnect()
+                if self.voice_channel != channel:
+                    await self.voice_client.disconnect()
+                    self.voice_client = None
+                    self.voice_channel = None
+                else:
+                    await ctx.respond("Already connected to the specified channel.")
+                    return
             
             self.voice_client = await channel.connect()
             self.voice_channel = channel
 
             ydl_opts = {
-                'format': 'bestaudio/best[acodec=opus]',
+                'format': 'bestaudio/best',
                 'outtmpl': '%(title)s.%(ext)s',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'opus',
-                    'preferredquality': '192',
-                }],
                 'ffmpeg_location': shutil.which('ffmpeg'),
                 'ffprobe_location': shutil.which('ffprobe'),
             }
@@ -57,10 +58,16 @@ class Play(commands.Cog):
                 info = ydl.extract_info(url, download=True)
                 filename = f"{info['title']}.opus"
 
-            source = discord.FFmpegOpusAudio(filename, executable="ffmpeg", options='-ac 2')
+            stereo_filename = f"{info['title']}_stereo.opus"
+            os.system(f"ffmpeg -i {filename} -af 'pan=stereo|c0=c0|c1=c1' -c:a libopus -b:a 192k {stereo_filename}")
+
+            source = discord.FFmpegOpusAudio(stereo_filename, executable="ffmpeg")
             self.voice_client.play(source)
 
             await ctx.respond(f"Playing *{info['title']}* in {channel.name}.")
+
+            os.remove(filename)
+            os.remove(stereo_filename)
 
         except Exception as e:
             await ctx.respond(f"An error occurred: {e}")
