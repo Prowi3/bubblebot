@@ -3,53 +3,45 @@ import os
 import random
 from discord.ext import commands
 
-#prefixes
+# Prefixes
 
 prefixes = ["bb ", "bB ", "BB ", "Bb "]
 bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 
-# Prefix commands
+# Load Commands
 
-prefix_commands = [
-    "commands.prefix.test",
-    "commands.prefix.google_images",
-    "commands.prefix.google_images_low",
-    "commands.prefix.status"
-]
+def load_extensions(bot, directory):
+    for file in os.listdir(directory):
+        if file.endswith('.py'):
+            try:
+                module_path = f'commands.{directory}.{file[:-3]}'
+                bot.load_extension(module_path)
+                print(f"Loaded extension: {module_path}")
+            except Exception as e:
+                print(f"Failed to load extension {module_path}: {e}")
 
-for command in prefix_commands:
-    bot.load_extension(command)
+prefix_commands_directory = os.path.join('src', 'commands', 'prefix')
+load_extensions(bot, prefix_commands_directory)
 
-# Slash commands
-
-commands_directory = os.path.join('src', 'commands', 'slash')
-
-command_files = [file[:-3] for file in os.listdir(commands_directory) if file.endswith('.py')]
-
-for file in command_files:
-    try:
-        module_path = f'commands.slash.{file}'
-        bot.load_extension(module_path)
-        print(f"Loaded extension: {module_path}")
-    except Exception as e:
-        print(f"Failed to load extension {module_path}: {e}")
+slash_commands_directory = os.path.join('src', 'commands', 'slash')
+load_extensions(bot, slash_commands_directory)
 
 
-#OTHER
+# Variables
 
 POKE_FILE_PATH = "miscellaneous/text files/poke.txt"
 MENTIONED_USER_ID = "<@1131529056882524212>"
 ERROR_CHANNEL_ID = 1142387860650082334
 READY_CHANNEL_ID = 1213257302455615518
 
-#bubble call
+# Bubble call
 
 async def bubble_call(message):
     if message.author.bot or not message.content.lower().startswith("bubble"):
         return
     await message.channel.send("GUH!!!!", reference=message)
 
-#silly poke
+# silly poke
 
 async def poke(message):
     if message.author.bot or not message.content.lower().startswith("poke"):
@@ -63,7 +55,7 @@ async def poke(message):
     except Exception as e:
         await message.channel.send(f"An error occurred: {e}", reference=message)
 
-#respond to mentions
+# respond to mentions
 
 async def mentions(message):
     if message.author.bot or MENTIONED_USER_ID not in message.content.lower():
@@ -77,7 +69,7 @@ async def on_message(message):
     await poke(message)
     await mentions(message)
 
-#activity, ready message
+# activity, ready message
 
 @bot.event
 async def on_ready():
@@ -94,7 +86,7 @@ async def on_ready():
     else:
         print("Channel not found.")
 
-#error handling
+# Error handling
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -110,7 +102,7 @@ async def on_command_error(ctx, error):
         print(f"Channel with ID {ERROR_CHANNEL_ID} not found.")
     await ctx.send(embed=embed)
 
-#TOEKN
+# TOEKN and Remove default commands
 
 bot.remove_command("help")
 bot.run(os.environ['TOKEN'])
