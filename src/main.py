@@ -20,11 +20,11 @@ def load_extensions(bot, directory):
             except Exception as e:
                 print(f"Failed to load extension {module_path}: {e}")
 
-prefix_commands_directory = os.path.join('src', 'commands', 'prefix')
-load_extensions(bot, prefix_commands_directory)
+prefix_commands = os.path.join('src', 'commands', 'prefix')
+load_extensions(bot, prefix_commands)
 
-slash_commands_directory = os.path.join('src', 'commands', 'slash')
-load_extensions(bot, slash_commands_directory)
+slash_commands = os.path.join('src', 'commands', 'slash')
+load_extensions(bot, slash_commands)
 
 
 # Variables
