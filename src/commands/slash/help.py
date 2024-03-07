@@ -74,6 +74,7 @@ class Help(commands.Cog):
         embed1.add_field(name="/__**r36**__", value="**╰→** Get a Random image from (Rule.34) Based on a tag, This command only works in NSfW Channels")
         embed1.add_field(name="/__**random_song**__", value="**╰→** Get a Random Song from Spotify")
         embed1.add_field(name="/__**dl_song**__", value="**╰→** Download a song from a Youtube URL")
+        embed1.add_field(name="/__**play_song**__", value="**╰→**Play a song from a Youtube URL")
 
         embed1.set_footer(text="1/3")
 
