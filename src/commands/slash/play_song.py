@@ -48,7 +48,6 @@ class Play(commands.Cog):
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'opus',
                     'preferredquality': '192',
-                    'options': '-ac 2'
                 }],
                 'ffmpeg_location': shutil.which('ffmpeg'),
                 'ffprobe_location': shutil.which('ffprobe'),
