@@ -10,7 +10,7 @@ class TextModal(Modal):
 
   async def callback(self, interaction):
     text = self.text_input.value
-    await interaction.channel.send(f"You entered: {text}")
+    await interaction.channel.respond(f"You entered: {text}")
 
 class Silly(commands.Cog):
   def __init__(self, bot):
