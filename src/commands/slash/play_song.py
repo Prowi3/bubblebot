@@ -42,12 +42,13 @@ class Play(commands.Cog):
             self.voice_channel = channel
 
             ydl_opts = {
-                'format': 'bestaudio/best',
+                'format': 'bestaudio/best[acodec=opus]',
                 'outtmpl': '%(title)s.%(ext)s',
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'opus',
                     'preferredquality': '192',
+                    'options': '-ac 2'
                 }],
                 'ffmpeg_location': shutil.which('ffmpeg'),
                 'ffprobe_location': shutil.which('ffprobe'),
