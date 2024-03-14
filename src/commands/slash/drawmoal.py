@@ -27,7 +27,7 @@ class DrawNNoise(commands.Cog):
         await ctx.interaction.response.send_modal(DrawNoiseModal(self))
 
 class DrawNoiseModal(discord.ui.Modal):
-    def __init__(self, draw_noise_cog: DrawNoise):
+    def __init__(self, draw_noise_cog: DrawNNoise):
         super().__init__(title="Draw Noise")
         self.draw_noise_cog = draw_noise_cog
 
