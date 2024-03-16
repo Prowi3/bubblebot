@@ -95,7 +95,7 @@ async def on_ready():
 #ping
         
 @tasks.loop(minutes=random.randint(1, 2))
-async def XDDD():
+async def XDDD(self):
     channel = bot.get_channel(1145696492363972706)
     await channel.send("<@760037563099643934>")
 
@@ -103,7 +103,7 @@ async def XDDD():
 async def before_XDDD():
     await bot.wait_until_ready()
 
-XDDD.start(bot)
+XDDD.start()
 
 # Error handling
 
