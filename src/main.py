@@ -111,7 +111,8 @@ async def XDDD():
 @XDDD.before_loop
 async def before_XDDD():
     await bot.wait_until_ready()
-    XDDD.start()
+
+XDDD.start()
 
 # Error handling
 
