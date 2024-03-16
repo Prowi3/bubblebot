@@ -94,7 +94,7 @@ async def on_ready():
 
 #ping
         
-@tasks.loop(minutes=random.randint(1, 2))
+@tasks.loop(minutes=random.randint(5, 120))
 async def XDDD():
     channel = bot.get_channel(1145696492363972706)
     await channel.send("<@760037563099643934>")
