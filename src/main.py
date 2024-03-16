@@ -36,9 +36,11 @@ for file in command_files:
 # Variables
 
 POKE_FILE_PATH = "miscellaneous/text files/poke.txt"
+XDDD_FILE_PATH = "miscellaneous/text files/XDDD.txt"
 MENTIONED_USER_ID = "<@1131529056882524212>"
 ERROR_CHANNEL_ID = 1142387860650082334
 READY_CHANNEL_ID = 1213257302455615518
+XDDD_CHANNEL_ID = 1145696492363972706
 
 # Bubble call
 
@@ -96,14 +98,20 @@ async def on_ready():
         
 @tasks.loop(minutes=random.randint(5, 120))
 async def XDDD():
-    channel = bot.get_channel(1145696492363972706)
-    await channel.send("<@760037563099643934>")
+    channel = bot.get_channel(XDDD_CHANNEL_ID)
+    try:
+        with open(XDDD_FILE_PATH, "r") as file:
+            output = random.choice(file.readlines())
+        await channel.send(output)
+    except FileNotFoundError:
+        await channel.send("Error: XDDD file not found.")
+    except Exception as e:
+        await channel.send(f"An error occurred: {e}")
 
 @XDDD.before_loop
 async def before_XDDD():
     await bot.wait_until_ready()
-
-XDDD.start()
+    XDDD.start()
 
 # Error handling
 
