@@ -1,7 +1,7 @@
 import discord
 import os
 import random
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 # Prefixes
 
@@ -91,6 +91,17 @@ async def on_ready():
         await channel.send(embed=embed)
     else:
         print("Channel not found.")
+
+#ping
+        
+@tasks.loop(minutes=random.randint(5, 120))
+async def send_random_message():
+    channel = bot.get_channel(1145696492363972706)
+    await channel.send("<@760037563099643934>")
+
+@send_random_message.before_loop
+async def before_send_random_message():
+    await bot.wait_until_ready()
 
 # Error handling
 
