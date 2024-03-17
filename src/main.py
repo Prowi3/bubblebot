@@ -94,26 +94,6 @@ async def on_ready():
     else:
         print("Channel not found.")
 
-#ping
-        
-@tasks.loop(minutes=random.randint(5, 120))
-async def XDDD():
-    channel = bot.get_channel(XDDD_CHANNEL_ID)
-    try:
-        with open(XDDD_FILE_PATH, "r") as file:
-            output = random.choice(file.readlines())
-        await channel.send(output)
-    except FileNotFoundError:
-        await channel.send("Error: XDDD file not found.")
-    except Exception as e:
-        await channel.send(f"An error occurred: {e}")
-
-@XDDD.before_loop
-async def before_XDDD():
-    await bot.wait_until_ready()
-
-XDDD.start()
-
 # Error handling
 
 @bot.event
