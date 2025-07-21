@@ -6,7 +6,7 @@ httpx
 noise
 numpy
 pet-pet-gif
-pillow==9.5.0
+pillow
 py-cord
 requests
 spotipy
