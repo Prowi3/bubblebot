@@ -8,15 +8,29 @@ from discord.ext import commands
 sent_image_links = []
 
 @commands.command(name="ser", aliases=["search"])
-async def google_images_low(ctx, *, search_query: str):
+async def google_images_high(ctx, *, search_query: str):
     search_query_encoded = urllib.parse.quote(search_query)
     search_url = f"https://www.google.com/search?q={search_query_encoded}&tbm=isch&safe=active"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+    }
+    
     response = requests.get(search_url, headers=headers)
     soup = BeautifulSoup(response.text, "html.parser")
-    img_tags = soup.find_all("img")
+    
+    # Extract script tags that contain image URLs
+    scripts = soup.find_all("script")
 
-    image_links = [img["src"] for img in img_tags if "src" in img.attrs and img["src"] not in sent_image_links and not img["src"].endswith(".gif")]
+    image_links = []
+
+    for script in scripts:
+        if "https://" in script.text:
+            parts = script.text.split('"')
+            for part in parts:
+                if part.startswith("https://") and (
+                    part.endswith(".jpg") or part.endswith(".png")
+                ) and not part.endswith(".gif") and part not in sent_image_links:
+                    image_links.append(part)
 
     if image_links:
         selected_image_link = random.choice(image_links)
@@ -28,7 +42,7 @@ async def google_images_low(ctx, *, search_query: str):
 
         await ctx.send(embed=embed)
     else:
-        await ctx.send("No suitable images found.")
+        await ctx.send("No high-resolution images found.")
 
 def setup(bot):
-    bot.add_command(google_images_low)
+    bot.add_command(google_images_high)
