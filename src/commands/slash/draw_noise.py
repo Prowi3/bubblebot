@@ -31,7 +31,6 @@ class DrawNoise(commands.Cog):
             return
         
         is_rendering = True
-        
         await ctx.defer()
         
         try:
@@ -50,7 +49,7 @@ class DrawNoise(commands.Cog):
             x_coords, y_coords = np.meshgrid(x_coords, y_coords)
             
             pnoise2_vectorized = np.vectorize(pnoise2)
-            noise_values = pnoise2_vectorized(x_coords / scale, y_coords / scale, octaves = octaves, persistence = persistence, lacunarity = lacunarity, repeatx=1024, repeaty=1024, base=1)
+            noise_values = pnoise2_vectorized(x_coords / scale, y_coords / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=1024, repeaty=1024, base=1)
             
             r, g, b = hue_color
             r_values = np.clip(r + noise_values * 100, 0, 255).astype(np.uint8)
@@ -65,20 +64,24 @@ class DrawNoise(commands.Cog):
                 font_path = f"miscellaneous/Fonts/{font}.ttf"
                 font = ImageFont.truetype(font_path, font_size)
                 text_lines = text.split('/')
-                
+
                 max_text_width = 0
                 total_text_height = 0
                 for line in text_lines:
-                    text_width, text_height = draw.textsize(line, font=font)
-                    if text_width > max_text_width:
-                        max_text_width = text_width
+                    bbox = draw.textbbox((0, 0), line, font=font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
+                    max_text_width = max(max_text_width, text_width)
                     total_text_height += text_height
-                
+
                 x = round((width - max_text_width) / 2) + 1
                 y = round((height - total_text_height) / 2) + 2
                 text_image = Image.new('RGB', (width, height))
+
                 for line in text_lines:
-                    text_width, text_height = draw.textsize(line, font=font)
+                    bbox = draw.textbbox((0, 0), line, font=font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
                     line_x = round((width - text_width) / 2)
                     text_draw = ImageDraw.Draw(text_image)
                     text_draw.text((line_x, y), text=line, fill=(255, 255, 255), font=font)
@@ -89,18 +92,16 @@ class DrawNoise(commands.Cog):
             embed_color = discord.Color.from_rgb(*hue_color)
 
             gradient_image.save('gradient.png')
-            
             file_path = 'gradient.png'
             file = discord.File(file_path)
             embed = discord.Embed(title="Here's your image.", color=embed_color)
             embed.set_image(url="attachment://gradient.png")
             await ctx.respond(file=file, embed=embed)
 
-            is_rendering = False
-        
         except Exception as e:
-            is_rendering = False
             await ctx.respond(f"An error occurred: {str(e)}")
+        finally:
+            is_rendering = False
 
 def setup(bot):
     bot.add_cog(DrawNoise(bot))

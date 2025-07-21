@@ -18,7 +18,6 @@ async def google_images_high(ctx, *, search_query: str):
     response = requests.get(search_url, headers=headers)
     soup = BeautifulSoup(response.text, "html.parser")
     
-    # Extract script tags that contain image URLs
     scripts = soup.find_all("script")
 
     image_links = []
