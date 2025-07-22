@@ -157,7 +157,7 @@ async def ai_chat(message):
 
             try:
                 response = client.chat.completions.create(
-                    model="qwq-32b-arli-rpr-v1",
+                    model="mistral-7b",
                     messages=chat_history,
                     max_tokens=450,
                     temperature=1.0,
