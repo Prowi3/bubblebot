@@ -3,6 +3,8 @@ import os
 import random
 import openai
 from discord.ext import commands, tasks
+from openai import OpenAI
+from dotenv import load_dotenv
 
 # OpenRouter API setup
 openai.api_key = os.environ['GPTKEY']
@@ -68,30 +70,52 @@ async def mentions(message):
     await message.channel.send("RAAAAAAAAAH!!!!", reference=message)
 
 # AI Chat response
+
+load_dotenv()
+
+client = OpenAI(
+    api_key=os.environ["GPTKEY"],
+    base_url="https://openrouter.ai/api/v1",
+)
+
 async def ai_chat(message):
     if message.author.bot:
         return
+
     if message.reference and isinstance(message.reference.resolved, discord.Message):
         replied_msg = message.reference.resolved
         if replied_msg.author == bot.user:
-            prompt = message.content
+            history = []
+            current = message
+            while current.reference and isinstance(current.reference.resolved, discord.Message):
+                parent = current.reference.resolved
+                role = "assistant" if parent.author == bot.user else "user"
+                history.insert(0, {"role": role, "content": parent.content.strip()})
+                current = parent
+
+            history.append({"role": "user", "content": message.content.strip()})
+
+            chat_history = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You're Bubble — a sarcastic, chaotic, meme-loving Discord bot with no filter. "
+                        "You joke, roast, and mock people in a fun way. You're never serious. "
+                        "Always be cheeky and stay in character. Never say you're an AI."
+                    )
+                }
+            ] + history
 
             try:
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model="mistralai/mistral-7b-instruct",
-                    messages=[
-                        {"role": "system", "content": (
-                            "You are Bubble, a witty, sarcastic, and chaotic Discord bot who loves "
-                            "memes, jokes, and a bit of playful sass. You always keep it lighthearted "
-                            "Never break character."
-                        )},
-                        {"role": "user", "content": prompt}
-                    ]
+                    messages=chat_history
                 )
                 reply = response.choices[0].message.content.strip()
                 await message.reply(reply)
+
             except Exception as e:
-                await message.reply(f"Error: {e}")
+                await message.reply(f"Bubble blew up: `{e}`")
 
 @bot.event
 async def on_message(message):
