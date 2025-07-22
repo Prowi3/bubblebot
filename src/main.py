@@ -1,5 +1,4 @@
-bot.remove_command("help")
-bot.run(os.environ['TOKEN'])import discord
+import discord
 import os
 import random
 import openai
