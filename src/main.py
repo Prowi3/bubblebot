@@ -115,7 +115,7 @@ async def ai_chat(message):
                     model="mistralai/mistral-7b-instruct",
                     messages=chat_history,
                     max_tokens=60,
-                    temperature=2.0,
+                    temperature=1.3,
                 )
                 reply = response.choices[0].message.content.strip()
                 await message.reply(reply)
