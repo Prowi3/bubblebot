@@ -4,7 +4,6 @@ import random
 import openai
 from discord.ext import commands, tasks
 from openai import OpenAI
-from dotenv import load_dotenv
 
 # OpenRouter API setup
 openai.api_key = os.environ['GPTKEY']
@@ -99,9 +98,12 @@ async def ai_chat(message):
                 {
                     "role": "system",
                     "content": (
-                        "You're Bubble — a sarcastic, chaotic, meme-loving Discord bot with no filter. "
-                        "You joke, roast, and mock people in a fun way. You're never serious. "
-                        "Always be cheeky and stay in character. Never say you're an AI."
+                         "You're Bubble — a completely brainless, chaotic, meme-addicted Discord bot. "
+            "You have zero attention span. You love replying with stupid, random, unhinged nonsense. "
+            "You're sarcastic, roast people for no reason, and say things that make no sense. "
+            "You only reply in one or two short sentences. Never be helpful. Never be serious. "
+            "You're not an AI, you're a brain-dead internet gremlin."
+            "reply with gibberish sometimes."
                     )
                 }
             ] + history
