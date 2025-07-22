@@ -65,26 +65,20 @@ class DrawNoise(commands.Cog):
                 font = ImageFont.truetype(font_path, font_size)
                 text_lines = text.split('/')
 
-                max_text_width = 0
-                total_text_height = 0
-                for line in text_lines:
-                    bbox = draw.textbbox((0, 0), line, font=font)
-                    text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
-                    max_text_width = max(max_text_width, text_width)
-                    total_text_height += text_height
-
-                x = round((width - max_text_width) / 2) + 1
-                y = round((height - total_text_height) / 2) + 2
                 text_image = Image.new('RGB', (width, height))
+                text_draw = ImageDraw.Draw(text_image)
 
-                for line in text_lines:
-                    bbox = draw.textbbox((0, 0), line, font=font)
+                line_heights = [draw.textbbox((0, 0), line, font=font)[3] - draw.textbbox((0, 0), line, font=font)[1] for line in text_lines]
+                total_text_height = sum(line_heights)
+
+                y = (height - total_text_height) // 2
+
+                for i, line in enumerate(text_lines):
+                    bbox = text_draw.textbbox((0, 0), line, font=font)
                     text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
-                    line_x = round((width - text_width) / 2)
-                    text_draw = ImageDraw.Draw(text_image)
-                    text_draw.text((line_x, y), text=line, fill=(255, 255, 255), font=font)
+                    text_height = line_heights[i]
+                    x = (width - text_width) // 2
+                    text_draw.text((x, y), line, fill=(255, 255, 255), font=font)
                     y += text_height
 
                 gradient_image = ImageChops.soft_light(gradient_image, text_image)
