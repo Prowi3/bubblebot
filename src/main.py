@@ -2,6 +2,7 @@ import discord
 import os
 import random
 import openai
+from dotenv import load_dotenv
 from discord.ext import commands, tasks
 from openai import OpenAI
 
