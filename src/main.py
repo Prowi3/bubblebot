@@ -1,15 +1,19 @@
-import discord
+bot.remove_command("help")
+bot.run(os.environ['TOKEN'])import discord
 import os
 import random
+import openai
 from discord.ext import commands, tasks
 
-# Prefixes
+# OpenRouter API setup
+openai.api_key = os.environ['GPTKEY']
+openai.api_base = "https://openrouter.ai/api/v1"
 
+# Prefixes
 prefixes = ["bb ", "bB ", "BB ", "Bb "]
 bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 
 # Load Commands
-
 prefix_commands = [
     "commands.prefix.test",
     "commands.prefix.google_images",
@@ -21,7 +25,6 @@ for command in prefix_commands:
     bot.load_extension(command)
 
 commands_directory = os.path.join('src', 'commands', 'slash')
-
 command_files = [file[:-3] for file in os.listdir(commands_directory) if file.endswith('.py')]
 
 for file in command_files:
@@ -32,9 +35,7 @@ for file in command_files:
     except Exception as e:
         print(f"Failed to load extension {module_path}: {e}")
 
-
 # Variables
-
 POKE_FILE_PATH = "miscellaneous/text files/poke.txt"
 XDDD_FILE_PATH = "miscellaneous/text files/XDDD.txt"
 MENTIONED_USER_ID = "<@1131529056882524212>"
@@ -43,14 +44,12 @@ READY_CHANNEL_ID = 1213257302455615518
 XDDD_CHANNEL_ID = 1145696492363972706
 
 # Bubble call
-
 async def bubble_call(message):
     if message.author.bot or not message.content.lower().startswith("bubble"):
         return
     await message.channel.send("GUH!!!!", reference=message)
 
-# silly poke
-
+# Silly poke
 async def poke(message):
     if message.author.bot or not message.content.lower().startswith("poke"):
         return
@@ -63,12 +62,37 @@ async def poke(message):
     except Exception as e:
         await message.channel.send(f"An error occurred: {e}", reference=message)
 
-# respond to mentions
-
+# Respond to mentions
 async def mentions(message):
     if message.author.bot or MENTIONED_USER_ID not in message.content.lower():
         return
     await message.channel.send("RAAAAAAAAAH!!!!", reference=message)
+
+# AI Chat response
+async def ai_chat(message):
+    if message.author.bot:
+        return
+    if message.reference and isinstance(message.reference.resolved, discord.Message):
+        replied_msg = message.reference.resolved
+        if replied_msg.author == bot.user:
+            prompt = message.content
+
+            try:
+                response = openai.ChatCompletion.create(
+                    model="mistralai/mistral-7b-instruct",
+                    messages=[
+                        {"role": "system", "content": (
+                            "You are Bubble, a witty, sarcastic, and chaotic Discord bot who loves "
+                            "memes, jokes, and a bit of playful sass. You always keep it lighthearted "
+                            "Never break character."
+                        )},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                reply = response.choices[0].message.content.strip()
+                await message.reply(reply)
+            except Exception as e:
+                await message.reply(f"Error: {e}")
 
 @bot.event
 async def on_message(message):
@@ -76,13 +100,12 @@ async def on_message(message):
     await bubble_call(message)
     await poke(message)
     await mentions(message)
+    await ai_chat(message)
 
-# activity, ready message
-
+# Activity and ready message
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game("poker | /help"))
-    
     channel = bot.get_channel(READY_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
@@ -95,7 +118,6 @@ async def on_ready():
         print("Channel not found.")
 
 # Error handling
-
 @bot.event
 async def on_command_error(ctx, error):
     embed = discord.Embed(
@@ -110,7 +132,8 @@ async def on_command_error(ctx, error):
         print(f"Channel with ID {ERROR_CHANNEL_ID} not found.")
     await ctx.send(embed=embed)
 
-# TOEKN and Remove default commands
-
+# Remove default help command
 bot.remove_command("help")
+
+# Run the bot
 bot.run(os.environ['TOKEN'])
