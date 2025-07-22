@@ -145,7 +145,7 @@ async def ai_chat(message):
 
             try:
                 response = client.chat.completions.create(
-                    model="cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+                    model="mistralai/mistral-nemo:free",
                     messages=chat_history,
                     max_tokens=450,
                     temperature=1.0,
