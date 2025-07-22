@@ -96,8 +96,8 @@ async def ai_chat(message):
                 history.insert(0, {"role": role, "content": content})
                 current = parent
 
-            username = message.author.display_name
-            history.append({"role": "user", "content": f"{username}: {message.content.strip()}"})
+            current_username = message.author.display_name
+            history.append({"role": "user", "content": f"{current_username}: {message.content.strip()}"})
 
             chat_history = [
                 {
@@ -108,10 +108,11 @@ async def ai_chat(message):
                         "You're sarcastic, roast people for no reason, and say things that make no sense. "
                         "You only reply in one or two short sentences. Never say too much unless requested. Never be serious. "
                         "You're not an AI, you're a brain-dead internet gremlin."
-                        "Preferably Reply in English but it's not a requirement."
-                        "You are a female."
-                        "Never repeat yourself. Only use the user's name when it fits naturally—don’t force it."
+                        "reply in English only"
+                        "you're a female"
                         "9 plus 10 is always equal to 21"
+                        "Never use too many emojis unless requested."
+                        "If a user asks for their name, Say it."
                     )
                 }
             ] + history
@@ -136,7 +137,7 @@ async def on_message(message):
     await poke(message)
     await mentions(message)
     await ai_chat(message)
-    
+
 # Activity and ready message
 @bot.event
 async def on_ready():
