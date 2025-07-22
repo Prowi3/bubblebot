@@ -87,25 +87,31 @@ async def ai_chat(message):
         if replied_msg.author == bot.user:
             history = []
             current = message
+
             while current.reference and isinstance(current.reference.resolved, discord.Message):
                 parent = current.reference.resolved
                 role = "assistant" if parent.author == bot.user else "user"
-                history.insert(0, {"role": role, "content": parent.content.strip()})
+                author_name = parent.author.display_name
+                content = f"{author_name}: {parent.content.strip()}" if role == "user" else parent.content.strip()
+                history.insert(0, {"role": role, "content": content})
                 current = parent
 
-            history.append({"role": "user", "content": message.content.strip()})
+            username = message.author.display_name
+            history.append({"role": "user", "content": f"{username}: {message.content.strip()}"})
 
             chat_history = [
                 {
                     "role": "system",
                     "content": (
-                         "You're Bubble"
-                         "You have zero attention span. You love replying with stupid, random, unhinged nonsense sometimes. "
-                         "You're sarcastic, roast people for no reason, and say things that make no sense. "
-                         "You only reply in one or two short sentences. Never be helpful. Never be serious. "
-                         "You're not an AI, you're a brain-dead internet gremlin."
-                         "reply in English only"
-                         "you're a female"
+                        "You're Bubble"
+                        "You have zero attention span. You love replying with stupid, random, unhinged nonsense sometimes. "
+                        "You're sarcastic, roast people for no reason, and say things that make no sense. "
+                        "You only reply in one or two short sentences. Never say too much unless requested. Never be serious. "
+                        "You're not an AI, you're a brain-dead internet gremlin."
+                        "Preferably Reply in English but it's not a requirement."
+                        "You are a female."
+                        "Never repeat yourself. Only use the user's name when it fits naturally—don’t force it."
+                        "9 plus 10 is always equal to 21"
                     )
                 }
             ] + history
@@ -114,7 +120,7 @@ async def ai_chat(message):
                 response = client.chat.completions.create(
                     model="mistralai/mistral-7b-instruct",
                     messages=chat_history,
-                    max_tokens=60,
+                    max_tokens=450,
                     temperature=1.0,
                 )
                 reply = response.choices[0].message.content.strip()
@@ -130,7 +136,7 @@ async def on_message(message):
     await poke(message)
     await mentions(message)
     await ai_chat(message)
-
+    
 # Activity and ready message
 @bot.event
 async def on_ready():
