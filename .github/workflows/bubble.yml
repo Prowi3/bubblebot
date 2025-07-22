@@ -25,6 +25,7 @@ jobs:
       SPOTSEC: ${{secrets.SPOTSEC }}
       GIT: ${{secrets.GIT}}
       GLSEARCH: ${{secrets.GLSEARCH}}
+      GPTKEY: ${{secrets.GPTKEY}}
       REPO: ${{ github.repository }}
     steps:
       - name: checkout the source.
