@@ -149,7 +149,7 @@ async def ai_chat(message):
 
             try:
                 response = client.chat.completions.create(
-                    model="llama3-70b-8192",
+                    model="deepseek-r1-distill-llama-70b",
                     messages=chat_history,
                     max_tokens=450,
                     temperature=1.0,
