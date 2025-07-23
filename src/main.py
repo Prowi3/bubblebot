@@ -157,7 +157,7 @@ async def ai_chat(message):
 
             try:
                 response = client.chat.completions.create(
-                    model="mistralai/mistral-7b-instruct:free",
+                    model="deepseek/deepseek-chat-v3-0324:free",
                     messages=chat_history,
                     max_tokens=450,
                     temperature=1.0,
