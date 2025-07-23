@@ -7,10 +7,6 @@ from dotenv import load_dotenv
 from discord.ext import commands, tasks
 from groq import Groq
 
-# OpenRouter API setup
-openai.api_key = os.environ['GPTKEY']
-openai.api_base = "https://openrouter.ai/api/v1"
-
 # Prefixes
 prefixes = ["bb ", "bB ", "BB ", "Bb "]
 bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
