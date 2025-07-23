@@ -11,6 +11,9 @@ from groq import Groq
 prefixes = ["bb ", "bB ", "BB ", "Bb "]
 bot = commands.Bot(command_prefix=prefixes, intents=discord.Intents.all())
 
+# Disable all mentions globally
+allowed_mentions = discord.AllowedMentions(everyone=False, users=False, roles=False)
+
 # Load Commands
 prefix_commands = [
     "commands.prefix.test",
@@ -41,16 +44,15 @@ ERROR_CHANNEL_ID = 1142387860650082334
 READY_CHANNEL_ID = 1213257302455615518
 XDDD_CHANNEL_ID = 1145696492363972706
 
-# Safe send
 async def safe_send(destination, content=None, *, reference=None, embed=None):
     def sanitize(text: str) -> str:
-        return re.sub(r"@everyone|@here|<@&\d+>|<@!?\d+>", "[NO PINGING]", text).strip()
+        return text.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere").strip()
 
     if content:
         content = sanitize(content)
 
     if isinstance(destination, discord.abc.Messageable):
-        return await destination.send(content=content, reference=reference, embed=embed)
+        return await destination.send(content=content, reference=reference, embed=embed, allowed_mentions=allowed_mentions)
 
 # Bubble call
 async def bubble_call(message):
