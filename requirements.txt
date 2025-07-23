@@ -14,5 +14,5 @@ yt-dlp
 pynacl
 ffmpeg-python
 scikit-image
-openai
+groq
 python-dotenv

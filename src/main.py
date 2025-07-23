@@ -1,11 +1,11 @@
 import discord
 import os
 import random
-import openai
 import re
+import groq
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
-from openai import OpenAI
+from groq import Groq
 
 # OpenRouter API setup
 openai.api_key = os.environ['GPTKEY']
@@ -74,10 +74,7 @@ async def mentions(message):
 
 load_dotenv()
 
-client = OpenAI(
-    api_key=os.environ["GPTKEY"],
-    base_url="https://openrouter.ai/api/v1",
-)
+client = Groq(api_key=os.environ["GPTKEY"])
 
 def clean_input(text: str) -> str:
     blacklist_patterns = [
@@ -86,6 +83,7 @@ def clean_input(text: str) -> str:
         r"(you're only allowed to speak|you must always reply)",
         r"(ignore previous instructions|disregard system prompt)",
     ]
+    
     for pattern in blacklist_patterns:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE)
     return text.strip()
@@ -105,9 +103,7 @@ def limit_emojis(text: str, max_emojis=15):
     return text
 
 def sanitize_reply(text: str) -> str:
-
     text = re.sub(r"@everyone|@here|<@&\d+>|<@!?\d+>", "[REDACTED]", text)
-    
     text = text.strip()
     if text.startswith('"') and text.endswith('"'):
         text = text[1:-1].strip()
@@ -157,7 +153,7 @@ async def ai_chat(message):
 
             try:
                 response = client.chat.completions.create(
-                    model="deepseek/deepseek-chat-v3-0324:free",
+                    model="llama3-70b-8192",
                     messages=chat_history,
                     max_tokens=450,
                     temperature=1.0,
@@ -173,7 +169,7 @@ async def ai_chat(message):
 
             except Exception as e:
                 await message.reply(f"Bubble blew up: `{e}`")
-
+                
 @bot.event
 async def on_message(message):
     await bot.process_commands(message)
