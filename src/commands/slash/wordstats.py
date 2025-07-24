@@ -1,19 +1,22 @@
 import discord
 from discord.ext import commands
+from discord import Option
 from collections import Counter
 import re
-from datetime import datetime
 
 class WordStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="wordstats", description="See what words a user uses the most (recent messages across server)")
+    @commands.slash_command(
+        name="wordstats",
+        description="See what words a user uses the most (recent messages across server)"
+    )
     async def wordstats(
         self,
         ctx,
-        user: discord.Member,
-        word: str = None
+        user: Option(discord.Member, "The user to analyze"),
+        word: Option(str, "Specific word to count", required=False) = None
     ):
         await ctx.defer()
 
@@ -41,7 +44,7 @@ class WordStats(commands.Cog):
             except discord.Forbidden:
                 continue
 
-        if not all_words:
+        if not all_words or not timestamps:
             embed = discord.Embed(
                 title="No Data Found",
                 description=f"No recent messages found for {user.mention}.",
@@ -51,8 +54,8 @@ class WordStats(commands.Cog):
             await ctx.respond(embed=embed)
             return
 
-        newest = timestamps[0].strftime('%Y-%m-%d)
-        oldest = timestamps[-1].strftime('%Y-%m-%d)
+        newest = timestamps[0].strftime('%Y-%m-%d')
+        oldest = timestamps[-1].strftime('%Y-%m-%d')
         time_range = f"From **{newest}** to **{oldest}**"
 
         embed = discord.Embed(color=discord.Color.blurple())
@@ -73,7 +76,8 @@ class WordStats(commands.Cog):
             top_text = "\n".join([f"**{i+1}. {w}** — {c} times" for i, (w, c) in enumerate(top_words)])
             embed.title = "Top 10 Words"
             embed.description = (
-                f"Analyzed {total_checked} **most recent messages:** from {user.mention}\n{time_range}\n\n{top_text}"
+                f"Analyzed {total_checked} **most recent messages** from {user.mention}\n"
+                f"{time_range}\n\n{top_text}"
             )
 
         await ctx.respond(embed=embed)
