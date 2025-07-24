@@ -26,6 +26,7 @@ jobs:
       GIT: ${{secrets.GIT}}
       GLSEARCH: ${{secrets.GLSEARCH}}
       GPTKEY: ${{secrets.GPTKEY}}
+      IMAGINE: ${{secrets.IMAGINE}}
       REPO: ${{ github.repository }}
     steps:
       - name: checkout the source.

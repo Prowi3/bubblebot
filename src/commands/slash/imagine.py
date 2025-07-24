@@ -1,0 +1,60 @@
+import discord
+from discord.ext import commands
+import os
+import asyncio
+from dotenv import load_dotenv
+import requests
+
+load_dotenv()
+REPLICATE_API_TOKEN = os.environ["IMAGINE"]
+
+class ImageGen(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.slash_command(name="imagine", description="Generate an image from your prompt.")
+    async def imagine(self, ctx, prompt: str):
+        await ctx.defer()
+
+        try:
+            response = requests.post(
+                "https://api.replicate.com/v1/predictions",
+                headers={
+                    "Authorization": f"Token {REPLICATE_API_TOKEN}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "version": "db21e45f70c0c51c4ef8fc579d70c969b54e34ac6b493d8775f43d8f17f3f98b",
+                    "input": {"prompt": prompt}
+                }
+            )
+            prediction = response.json()
+
+            if "urls" not in prediction or "get" not in prediction["urls"]:
+                await ctx.respond("Failed to generate image URL.")
+                return
+
+            status_url = prediction["urls"]["get"]
+            image_url = None
+            for _ in range(20):
+                result = requests.get(status_url, headers={"Authorization": f"Token {REPLICATE_API_TOKEN}"}).json()
+                if result["status"] == "succeeded":
+                    image_url = result["output"][0]
+                    break
+                elif result["status"] == "failed":
+                    await ctx.respond("Image generation failed.")
+                    return
+                await asyncio.sleep(1)
+
+            if image_url:
+                embed = discord.Embed(title="Here's your image:", description=f"`{prompt}`", color=0x9FC6F6)
+                embed.set_image(url=image_url)
+                await ctx.respond(embed=embed)
+            else:
+                await ctx.respond("Image generation timed out.")
+
+        except Exception as e:
+            await ctx.respond(f"Error: `{e}`")
+
+def setup(bot):
+    bot.add_cog(ImageGen(bot))
