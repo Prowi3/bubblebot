@@ -1,102 +1,106 @@
 import discord
-import numpy as np
-import random
-import math
-
-from noise import pnoise2
 from discord.ext import commands
-from PIL import Image, ImageDraw, ImageFont, ImageChops
+from discord import Option
+from collections import Counter
+import re
+import os
 
-fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
-is_rendering = False
-
-class DrawNoise(commands.Cog):
+class WordStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.stopwords = self.load_stopwords("miscellaneous/stopwords.txt")
 
-    @commands.slash_command(name="draw_noise", description='Draw an image using Noise')
-    async def draw_noise(self, ctx: discord.ApplicationContext,
-        *,
-        font: discord.Option(str, description="Select a font.", choices=fonts) = "Roboto-Black",
-        text: discord.Option(str = '',  description="Enter your text here. Use '/' to split lines. emojis and emots won't work.") = None,
-        octaves: discord.Option(int, description="Choose the octave amount, the default is 1.0 (/help for more info)") = 1, 
-        lacunarity: discord.Option(float , description="Choose the lacunarity amount, the default is 5.0 (/help for more info)") = 5.0,
-        persistence: discord.Option(float , description="Choose the persistence amount, the default is to 0.5 (/help for more info)") = 0.5
-        ):
+    def load_stopwords(self, filepath):
+        if not os.path.isfile(filepath):
+            print(f"Stopword file not found at {filepath}. Using empty list.")
+            return set()
+        with open(filepath, "r", encoding="utf-8") as f:
+            return set(line.strip().lower() for line in f if line.strip())
 
-        global is_rendering
-        
-        if is_rendering:
-            await ctx.send("Sorry, an image is already being rendered.")
-            return
-        
-        is_rendering = True
+    @commands.slash_command(
+        name="wordstats",
+        description="See what words a user uses the most (recent messages across server)"
+    )
+    async def wordstats(
+        self,
+        ctx,
+        user: Option(discord.Member, "The user to analyze"),
+        word: Option(str, "Specific word to count", required=False) = None
+    ):
         await ctx.defer()
-        
-        try:
-            width, height = 1080, 1080
-            gradient_image = Image.new('RGB', (width, height))
-            draw = ImageDraw.Draw(gradient_image)
-            
-            scale = 300.0
-            hue_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
-            offset_x = random.uniform(0, 1000)
-            offset_y = random.uniform(0, 1000)
-            
-            x_coords = np.arange(width) + offset_x
-            y_coords = np.arange(height) + offset_y
-            x_coords, y_coords = np.meshgrid(x_coords, y_coords)
-            
-            pnoise2_vectorized = np.vectorize(pnoise2)
-            noise_values = pnoise2_vectorized(x_coords / scale, y_coords / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=1024, repeaty=1024, base=1)
-            
-            r, g, b = hue_color
-            r_values = np.clip(r + noise_values * 100, 0, 255).astype(np.uint8)
-            g_values = np.clip(g + noise_values * 100, 0, 255).astype(np.uint8)
-            b_values = np.clip(b + noise_values * 100, 0, 255).astype(np.uint8)
-            rgb_values = np.stack([r_values, g_values, b_values], axis=-1)
-            gradient_image = Image.fromarray(rgb_values)
+        max_messages = 500
+        collected = 0
+        all_words = []
+        timestamps = []
 
-            if text:
-                draw = ImageDraw.Draw(gradient_image)
-                font_size = int(math.sqrt(width * height) / len(text)) + 25
-                font_path = f"miscellaneous/Fonts/{font}.ttf"
-                font = ImageFont.truetype(font_path, font_size)
-                text_lines = text.split('/')
+        def clean_word(w):
+            return (
+                len(w) > 1 and
+                not w.isdigit() and
+                w not in self.stopwords
+            )
 
-                text_image = Image.new('RGB', (width, height))
-                text_draw = ImageDraw.Draw(text_image)
+        emoji_pattern = re.compile(r'<a?:\w+:\d+>')
+        word_pattern = re.compile(r'\b\w+\b')
 
-                line_bboxes = [font.getbbox(line) for line in text_lines]
-                line_heights = [bbox[3] - bbox[1] for bbox in line_bboxes]
-                total_text_height = sum(line_heights)
+        for channel in ctx.guild.text_channels:
+            if not channel.permissions_for(ctx.guild.me).read_message_history:
+                continue
 
-                y = (height - total_text_height) // 2
+            try:
+                async for msg in channel.history(limit=1000, oldest_first=False):
+                    if msg.author.id == user.id and not msg.author.bot:
+                        text = emoji_pattern.sub('', msg.content)
+                        words = [w for w in word_pattern.findall(text.lower()) if clean_word(w)]
+                        if words:
+                            all_words.extend(words)
+                            timestamps.append(msg.created_at)
+                            collected += 1
+                        if collected >= max_messages:
+                            break
+                if collected >= max_messages:
+                    break
+            except discord.Forbidden:
+                continue
 
-                for i, line in enumerate(text_lines):
-                    bbox = font.getbbox(line)
-                    text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
-                    x = (width - text_width) // 2
-                    text_draw.text((x, y - bbox[1]), line, fill=(255, 255, 255), font=font)
-                    y += text_height
+        if not all_words or not timestamps:
+            embed = discord.Embed(
+                title="No Data Found",
+                description=f"No recent messages found for {user.mention}.",
+                color=discord.Color.blurple()
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.avatar.url)
+            await ctx.respond(embed=embed)
+            return
 
-                gradient_image = ImageChops.soft_light(gradient_image, text_image)
+        newest = max(timestamps).strftime('%Y-%m-%d')
+        oldest = min(timestamps).strftime('%Y-%m-%d')
+        time_range = f"From **{oldest}** to **{newest}**"
 
-            embed_color = discord.Color.from_rgb(*hue_color)
+        embed = discord.Embed(color=discord.Color.blurple())
+        embed.set_author(name=f"Word Stats for {user.display_name}", icon_url=user.avatar.url)
+        embed.set_footer(text=f"{user.display_name}'s message history", icon_url=user.avatar.url)
 
-            gradient_image.save('gradient.png')
-            file_path = 'gradient.png'
-            file = discord.File(file_path)
-            embed = discord.Embed(title="Here's your image.", color=embed_color)
-            embed.set_image(url="attachment://gradient.png")
-            await ctx.respond(file=file, embed=embed)
+        if word:
+            word = word.lower()
+            count = all_words.count(word)
+            embed.title = f"'{word}' Usage:"
+            embed.description = (
+                f"**{user.mention}** said '**{word}**' **{count}** times "
+                f"in their **most recent {collected} messages**.\n\n{time_range}"
+            )
+        else:
+            counter = Counter(all_words)
+            top_words = counter.most_common(10)
+            top_text = "\n".join([f"**{i+1}. {w}** — {c} times" for i, (w, c) in enumerate(top_words)])
+            embed.title = "Top 10 Words"
+            embed.description = (
+                f"Analyzed {collected} **most recent messages** from {user.mention}\n"
+                f"{time_range}\n\n{top_text}"
+            )
 
-        except Exception as e:
-            await ctx.respond(f"An error occurred: {str(e)}")
-        finally:
-            is_rendering = False
+        await ctx.respond(embed=embed)
 
 def setup(bot):
-    bot.add_cog(DrawNoise(bot))
+    bot.add_cog(WordStats(bot))
