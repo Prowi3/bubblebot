@@ -15,7 +15,7 @@ class Question(commands.Cog):
     async def question(self, ctx):
         await ctx.defer()
 
-        prompt = "Generate one standalone random, interesting, or funny question. Only return the question without any explanation or flair."
+        prompt = "Generate a single creative, funny, or thought-provoking question. Avoid repeating topics or structures used in previous questions. Do NOT use 'If animals could...' or any similar phrasing repeatedly. Do not include any explanations or intros—just the question itself. Make the question sound fresh and unique each time."
 
         messages = [
             {"role": "user", "content": prompt}
