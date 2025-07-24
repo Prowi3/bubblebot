@@ -24,8 +24,10 @@ class ImageGen(commands.Cog):
                     "Content-Type": "application/json"
                 },
                 json={
-                    "version": "db21e45f70c0c51c4ef8fc579d70c969b54e34ac6b493d8775f43d8f17f3f98b",
-                    "input": {"prompt": prompt}
+                    "version": "b3d14e1cd1f9470bbb0bb68cac48e5f483e5be309551992cc33dc30654a82bb7"
+                    "input": {
+                        "prompt": prompt
+                    }
                 }
             )
             prediction = response.json()
@@ -38,7 +40,7 @@ class ImageGen(commands.Cog):
             image_url = None
             for _ in range(20):
                 result = requests.get(status_url, headers={"Authorization": f"Token {REPLICATE_API_TOKEN}"}).json()
-                if result["status"] == "succeeded":
+                if result["status"] == "succeeded" and result.get("output"):
                     image_url = result["output"][0]
                     break
                 elif result["status"] == "failed":
