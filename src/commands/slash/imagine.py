@@ -11,6 +11,8 @@ class ImageGen(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.token = os.getenv("IMAGINE")
+        if not self.token:
+            print("Warning: Replicate API token (IMAGINE) is not set!")
 
     @commands.slash_command(name="imagine", description="Generate an image from your prompt.")
     async def imagine(self, ctx: discord.ApplicationContext, prompt: str):
@@ -25,15 +27,18 @@ class ImageGen(commands.Cog):
                 },
                 json={
                     "version": "b3d14e1cd1f9470bbb0bb68cac48e5f483e5be309551992cc33dc30654a82bb7",
-                    "input": {
-                        "prompt": prompt
-                    }
+                    "input": {"prompt": prompt}
                 }
             )
+
+            print("POST status code:", response.status_code)
+            print("POST response:", response.text)
+
             prediction = response.json()
 
             if "urls" not in prediction or "get" not in prediction["urls"]:
-                await ctx.respond("Failed to generate image URL.")
+                error_message = prediction.get("detail") or prediction.get("error") or "Unknown error"
+                await ctx.respond(f"Failed to start image generation: {error_message}")
                 return
 
             status_url = prediction["urls"]["get"]
@@ -41,12 +46,16 @@ class ImageGen(commands.Cog):
 
             for _ in range(20):
                 result = requests.get(status_url, headers={"Authorization": f"Token {self.token}"}).json()
-                if result["status"] == "succeeded" and result.get("output"):
+
+                print("Polling status:", result.get("status"))
+
+                if result.get("status") == "succeeded" and result.get("output"):
                     image_url = result["output"][0]
                     break
-                elif result["status"] == "failed":
+                elif result.get("status") == "failed":
                     await ctx.respond("Image generation failed.")
                     return
+
                 await asyncio.sleep(1)
 
             if image_url:
@@ -58,7 +67,7 @@ class ImageGen(commands.Cog):
                 embed.set_image(url=image_url)
                 await ctx.respond(embed=embed)
             else:
-                await ctx.respond("Image generation timed out.")
+                await ctx.respond("Image generation timed out. Please try again.")
 
         except Exception as e:
             await ctx.respond(f"Error: `{e}`")
