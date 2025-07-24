@@ -2,7 +2,9 @@ import discord
 from discord.ext import commands
 import os
 import io
-import requests
+import asyncio
+import base64
+from craiyon import Craiyon, craiyon_utils
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,43 +12,60 @@ load_dotenv()
 class ImageGen(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.hf_token = os.getenv("IMAGINE")
-        if not self.hf_token:
-            print("Warning: Hugging Face API token (IMAGINE) not set!")
+        self.generator = Craiyon()
 
-    @commands.slash_command(name="imagine", description="Generate an image from your prompt using Stable Diffusion 2.1.")
+    @commands.slash_command(name="imagine", description="Generate images using Craiyon (free)")
     async def imagine(self, ctx: discord.ApplicationContext, prompt: str):
         await ctx.defer()
+
         try:
-            API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
-            headers = {
-                "Authorization": f"Bearer {self.hf_token}",
-                "Accept": "image/png"  # ensures API returns image bytes
-            }
-            payload = {"inputs": prompt, "options": {"wait_for_model": True}}
+            result = await self.generator.async_generate(prompt)
+            b64_list = await craiyon_utils.async_encode_base64(result.images)
 
-            response = requests.post(API_URL, headers=headers, json=payload)
-            print("Status:", response.status_code, "Content-Type:", response.headers.get("content-type"))
+            images = []
+            for b64 in b64_list:
+                img_bytes = io.BytesIO(base64.b64decode(b64))
+                images.append(discord.File(img_bytes, filename="image.png"))
 
-            if response.status_code == 404:
-                await ctx.respond("API endpoint not found. Please check model path or access.")
-                return
-            if response.status_code != 200:
-                await ctx.respond(f"Error from API: {response.status_code} {response.text}")
-                return
+            index = 0
 
-            if response.headers.get("content-type", "").startswith("application/json"):
-                await ctx.respond("API error: " + response.json().get("error", "Unknown error"))
-                return
-
-            image_data = response.content
-            image_file = discord.File(io.BytesIO(image_data), filename="image.png")
-            embed = discord.Embed(title="Here's your image:", description=f"`{prompt}`", color=0x9FC6F6)
+            embed = discord.Embed(
+                title=f"Image 1/9",
+                description=f"`{prompt}`",
+                color=0x00B2FF
+            )
             embed.set_image(url="attachment://image.png")
-            await ctx.respond(embed=embed, file=image_file)
+
+            class ImageView(discord.ui.View):
+                def __init__(self, images):
+                    super().__init__(timeout=300)
+                    self.images = images
+                    self.index = 0
+
+                @discord.ui.button(label="Prev", style=discord.ButtonStyle.secondary)
+                async def prev(self, button, interaction):
+                    self.index = (self.index - 1) % len(self.images)
+                    await self.update(interaction)
+
+                @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
+                async def next(self, button, interaction):
+                    self.index = (self.index + 1) % len(self.images)
+                    await self.update(interaction)
+
+                async def update(self, interaction):
+                    embed = discord.Embed(
+                        title=f"Image {self.index + 1}/{len(self.images)}",
+                        description=f"`{prompt}`",
+                        color=0x00B2FF
+                    )
+                    embed.set_image(url="attachment://image.png")
+                    await interaction.response.edit_message(embed=embed, attachments=[self.images[self.index]], view=self)
+
+            view = ImageView(images)
+            await ctx.respond(embed=embed, file=images[0], view=view)
 
         except Exception as e:
-            await ctx.respond(f"Exception: `{e}`")
+            await ctx.respond(f"Error generating from Craiyon: `{e}`")
 
 def setup(bot):
     bot.add_cog(ImageGen(bot))

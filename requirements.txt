@@ -16,3 +16,4 @@ ffmpeg-python
 scikit-image
 groq
 python-dotenv
+craiyon
