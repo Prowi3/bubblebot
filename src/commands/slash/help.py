@@ -80,7 +80,7 @@ class Help(commands.Cog):
         # Page 2
         embed_prefix = discord.Embed(
             title="Prefix Commands",
-            description="These commands use the classic `!` prefix:",
+            description="These commands use the `BB` prefix:",
             color=discord.Color(0xFFD700)
         )
         embed_prefix.add_field(name="**bb ser/search**", value="**╰→** Search for any image.", inline=False)
