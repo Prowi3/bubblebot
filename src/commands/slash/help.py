@@ -83,9 +83,9 @@ class Help(commands.Cog):
             description="These commands use the classic `!` prefix:",
             color=discord.Color(0xFFD700)
         )
-        embed_prefix.add_field(name="**!ping**", value="**╰→** Shows the bot's latency.", inline=False)
-        embed_prefix.add_field(name="**!invite**", value="**╰→** Get the invite link for BubbleBot.", inline=False)
-        embed_prefix.add_field(name="**!uptime**", value="**╰→** Shows how long the bot has been online.", inline=False)
+        embed_prefix.add_field(name="**bb ser/search**", value="**╰→** Search for any image.", inline=False)
+        embed_prefix.add_field(name="**bb gl/google**", value="**╰→** same as search but better", inline=False)
+        embed_prefix.add_field(name="**bb test**", value="**╰→** check if the bot is working or not", inline=False)
         embed_prefix.set_footer(text="2/4")
 
         p.pages[1] = str(embed_prefix.to_dict())
