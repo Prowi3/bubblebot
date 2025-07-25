@@ -52,6 +52,9 @@ class WordStats(commands.Cog):
         ax = plt.gca()
         ax.set_facecolor(bg_color)
 
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+
         plt.plot(sorted_days, counts, marker='o', linestyle='-', color=embed_color)
         plt.fill_between(sorted_days, counts, color=embed_color, alpha=0.3)
         plt.title(f"{username}'s Message Activity Over Time", color='white')
