@@ -114,7 +114,7 @@ class WordStats(commands.Cog):
 
         embed = discord.Embed(color=discord.Color(0x9FC6F6))
         embed.set_author(name=f"Word Stats for {user.display_name}", icon_url=user.display_avatar.url)
-        embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        embed.set_footer(text=f"Requested by {ctx.author.display_name}")
 
         if word:
             cleaned_word = word.lower().strip()
