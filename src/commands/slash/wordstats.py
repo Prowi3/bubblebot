@@ -1,4 +1,5 @@
-import discord
+def setup(bot):
+    bot.add_cog(WordStats(bot))import discord
 from discord.ext import commands
 from discord.commands import Option
 from collections import Counter, defaultdict
@@ -13,8 +14,7 @@ class WordStats(commands.Cog):
         print("[WordStats] Cog loaded!")
 
         self.stopwords = self.load_stopwords("miscellaneous/text files/stopwords.txt")
-        self.emoji_pattern = re.compile(r'<a?:\w+:\d+>')
-        self.word_pattern = re.compile(r'\b\w+\b')
+        self.word_pattern = re.compile(r"\b[a-zA-Z']+\b")
 
     def load_stopwords(self, filepath):
         if not os.path.isfile(filepath):
@@ -23,17 +23,21 @@ class WordStats(commands.Cog):
             return set(line.strip().lower() for line in f if line.strip())
 
     def clean_word(self, word):
-        return (
-            len(word) > 1 and
-            not word.isdigit() and
-            word not in self.stopwords
-        )
+        word = word.lower()
+        if len(word) <= 1:
+            return False
+        if any(char.isdigit() for char in word):
+            return False
+        if word in self.stopwords:
+            return False
+        if all(c == '_' for c in word):
+            return False
+        return True
 
     def generate_trend_image(self, timestamps, username):
         daily_counts = defaultdict(int)
         for ts in timestamps:
-            day = ts.date()
-            daily_counts[day] += 1
+            daily_counts[ts.date()] += 1
 
         sorted_days = sorted(daily_counts)
         counts = [daily_counts[day] for day in sorted_days]
@@ -57,12 +61,13 @@ class WordStats(commands.Cog):
 
     @commands.slash_command(
         name="wordstats",
-        description="Analyze and display the most used words by a user from recent messages."
+        description="Analyze and display the most used words by a user in a specific channel."
     )
     async def wordstats(
         self,
         ctx,
         user: Option(discord.Member, "The user to analyze"),
+        channel: Option(discord.TextChannel, "Channel to analyze"),
         word: Option(str, "Specific word to count", required=False) = None,
         days: Option(int, "How many past days to analyze (default 30)", required=False) = 30
     ):
@@ -72,38 +77,45 @@ class WordStats(commands.Cog):
         word_data = []
         timestamps = []
 
-        for channel in ctx.guild.text_channels:
-            if not channel.permissions_for(ctx.guild.me).read_message_history:
-                continue
-            try:
-                async for msg in channel.history(limit=None, after=since_time, oldest_first=False):
-                    if msg.author.id != user.id or msg.author.bot:
-                        continue
-                    if not msg.content.strip():
-                        continue
+        perms = channel.permissions_for(ctx.guild.me)
+        if not perms.read_message_history:
+            return await ctx.respond("❌ I don't have permission to read message history in that channel.", ephemeral=True)
 
-                    text = self.emoji_pattern.sub('', msg.content)
-                    words = [w for w in self.word_pattern.findall(text.lower()) if self.clean_word(w)]
+        max_msgs = 10000
+        collected_msgs = 0
+        max_relevant = 500
+
+        try:
+            async for msg in channel.history(limit=max_msgs, after=since_time, oldest_first=False):
+                if msg.author.id != user.id or msg.author.bot or not msg.content.strip():
+                    continue
+
+                words_raw = self.word_pattern.findall(msg.content)
+                words = [w for w in words_raw if self.clean_word(w)]
+
+                if words:
+                    timestamps.append(msg.created_at)
                     for w in words:
                         word_data.append((msg.created_at, w))
-                    if words:
-                        timestamps.append(msg.created_at)
+                    collected_msgs += 1
 
-            except discord.Forbidden:
-                continue
+                if collected_msgs >= max_relevant:
+                    break
+
+        except discord.Forbidden:
+            return await ctx.respond("❌ I was denied access to that channel.", ephemeral=True)
 
         if not word_data:
             embed = discord.Embed(
                 title="No Data Found",
-                description=f"No recent messages found for {user.mention}.",
+                description=f"No recent messages found for {user.mention} in {channel.mention}.",
                 color=discord.Color(0x9FC6F6)
             )
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.respond(embed=embed)
-            return
+            return await ctx.respond(embed=embed)
 
         word_data.sort(key=lambda x: x[0], reverse=True)
-        word_data = word_data[:500]
+        word_data = word_data[:max_relevant]
         recent_words = [w for _, w in word_data]
         recent_timestamps = [ts for ts, _ in word_data]
         collected = len(recent_words)
@@ -122,7 +134,7 @@ class WordStats(commands.Cog):
             embed.title = f"'{cleaned_word}' Usage:"
             embed.description = (
                 f"**{user.mention}** said '**{cleaned_word}**' **{count}** times "
-                f"in their **most recent {collected} messages**.\n\n{time_range}"
+                f"in their **most recent {collected} messages** in {channel.mention}.\n\n{time_range}"
             )
         else:
             counter = Counter(recent_words)
@@ -132,9 +144,9 @@ class WordStats(commands.Cog):
                 embed.description = "No frequent words detected after filtering stopwords."
             else:
                 top_text = "\n".join([f"**{i+1}. {w}** — {c} times" for i, (w, c) in enumerate(top_words)])
-                embed.title = "Top 10 Words"
+                embed.title = f"Top 10 Words in {channel.name}"
                 embed.description = (
-                    f"Analyzed {collected} **most recent messages** from {user.mention}\n"
+                    f"Analyzed {collected} messages from {user.mention} in {channel.mention}\n"
                     f"{time_range}\n\n{top_text}"
                 )
 
