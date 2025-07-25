@@ -13,7 +13,6 @@ class WordStats(commands.Cog):
         self.stopwords = self.load_stopwords("miscellaneous/text files/stopwords.txt")
         self.emoji_pattern = re.compile(r'<a?:\w+:\d+>')
         self.word_pattern = re.compile(r'\b\w+\b')
-        print("[WordStats] Cog loaded successfully.")
 
     def load_stopwords(self, filepath):
         if not os.path.isfile(filepath):
@@ -22,7 +21,7 @@ class WordStats(commands.Cog):
             return set(line.strip().lower() for line in f if line.strip())
 
     def clean_word(self, word):
-        return (
+        return (1
             len(word) > 1 and
             not word.isdigit() and
             word not in self.stopwords
@@ -146,8 +145,4 @@ class WordStats(commands.Cog):
             await ctx.respond(embed=embed)
 
 def setup(bot):
-    try:
-        bot.add_cog(WordStats(bot))
-        print("[WordStats] Cog added to bot.")
-    except Exception as e:
-        print(f"[WordStats] Failed to load cog: {e}")
+    bot.add_cog(WordStats(bot))
