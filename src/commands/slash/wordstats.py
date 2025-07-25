@@ -1,4 +1,3 @@
-import discord
 from discord.ext import commands
 from discord import Option
 from collections import Counter
@@ -10,12 +9,21 @@ class WordStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.stopwords = self.load_stopwords("miscellaneous/text files/stopwords.txt")
+        self.emoji_pattern = re.compile(r'<a?:\w+:\d+>')
+        self.word_pattern = re.compile(r'\b\w+\b')
 
     def load_stopwords(self, filepath):
         if not os.path.isfile(filepath):
             return set()
         with open(filepath, "r", encoding="utf-8") as f:
             return set(line.strip().lower() for line in f if line.strip())
+
+    def clean_word(self, word):
+        return (
+            len(word) > 1 and
+            not word.isdigit() and
+            word not in self.stopwords
+        )
 
     @commands.slash_command(
         name="wordstats",
@@ -30,45 +38,25 @@ class WordStats(commands.Cog):
     ):
         await ctx.defer()
 
-        max_messages = 500
-        collected = 0
+        since_time = datetime.now(timezone.utc) - timedelta(days=days)
         all_words = []
         timestamps = []
 
-        emoji_pattern = re.compile(r'<a?:\w+:\d+>')
-        word_pattern = re.compile(r'\b\w+\b')
-        since_time = datetime.now(timezone.utc) - timedelta(days=days)
-
-        def clean_word(w):
-            return (
-                len(w) > 1 and
-                not w.isdigit() and
-                w not in self.stopwords
-            )
-
         for channel in ctx.guild.text_channels:
-            perms = channel.permissions_for(ctx.guild.me)
-            if not perms.read_message_history:
+            if not channel.permissions_for(ctx.guild.me).read_message_history:
                 continue
-
             try:
-                async for msg in channel.history(limit=1000, oldest_first=False, after=since_time):
+                async for msg in channel.history(limit=None, after=since_time, oldest_first=False):
                     if msg.author.id != user.id or msg.author.bot:
                         continue
-                    if not msg.content or all(char.isspace() for char in msg.content):
+                    if not msg.content.strip():
                         continue
 
-                    text = emoji_pattern.sub('', msg.content)
-                    words = [w for w in word_pattern.findall(text.lower()) if clean_word(w)]
+                    text = self.emoji_pattern.sub('', msg.content)
+                    words = [w for w in self.word_pattern.findall(text.lower()) if self.clean_word(w)]
                     if words:
                         all_words.extend(words)
                         timestamps.append(msg.created_at)
-                        collected += 1
-                    if collected >= max_messages:
-                        break
-
-                if collected >= max_messages:
-                    break
 
             except discord.Forbidden:
                 continue
@@ -79,35 +67,44 @@ class WordStats(commands.Cog):
                 description=f"No recent messages found for {user.mention}.",
                 color=discord.Color(0x9FC6F6)
             )
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
             await ctx.respond(embed=embed)
             return
+
+        word_message_pairs = list(zip(timestamps, all_words))
+        word_message_pairs.sort(reverse=True)
+        recent_words = [w for _, w in word_message_pairs[:500]]
+        collected = len(recent_words)
 
         newest = max(timestamps).strftime('%Y-%m-%d')
         oldest = min(timestamps).strftime('%Y-%m-%d')
         time_range = f"From **{oldest}** to **{newest}**"
 
         embed = discord.Embed(color=discord.Color(0x9FC6F6))
-        embed.set_author(name=f"Word Stats for {user.display_name}", icon_url=user.avatar.url)
-        embed.set_footer(text=f"{user.display_name}'s message history")
+        embed.set_author(name=f"Word Stats for {user.display_name}", icon_url=user.display_avatar.url)
+        embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
 
         if word:
-            word = word.lower()
-            count = all_words.count(word)
-            embed.title = f"'{word}' Usage:"
+            cleaned_word = word.lower().strip()
+            count = recent_words.count(cleaned_word)
+            embed.title = f"'{cleaned_word}' Usage:"
             embed.description = (
-                f"**{user.mention}** said '**{word}**' **{count}** times "
+                f"**{user.mention}** said '**{cleaned_word}**' **{count}** times "
                 f"in their **most recent {collected} messages**.\n\n{time_range}"
             )
         else:
-            counter = Counter(all_words)
+            counter = Counter(recent_words)
             top_words = counter.most_common(10)
-            top_text = "\n".join([f"**{i+1}. {w}** — {c} times" for i, (w, c) in enumerate(top_words)])
-            embed.title = "Top 10 Words"
-            embed.description = (
-                f"Analyzed {collected} **most recent messages** from {user.mention}\n"
-                f"{time_range}\n\n{top_text}"
-            )
+            if not top_words:
+                embed.title = "No Common Words Found"
+                embed.description = "No frequent words detected after filtering stopwords."
+            else:
+                top_text = "\n".join([f"**{i+1}. {w}** — {c} times" for i, (w, c) in enumerate(top_words)])
+                embed.title = "Top 10 Words"
+                embed.description = (
+                    f"Analyzed {collected} **most recent messages** from {user.mention}\n"
+                    f"{time_range}\n\n{top_text}"
+                )
 
         await ctx.respond(embed=embed)
 
