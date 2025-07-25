@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from discord import Option
+from discord.commands import Option
 from collections import Counter, defaultdict
 import re
 import os
