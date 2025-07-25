@@ -117,7 +117,7 @@ class Help(commands.Cog):
             color=discord.Color(0xF23F43)
         )
 
-        embed3.set_footer(text="4/4")
+        embed4.set_footer(text="4/4")
         p.pages[3] = str(embed4.to_dict())
 
         message = await ctx.respond(embed=embed1)
