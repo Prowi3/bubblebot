@@ -4,7 +4,7 @@ from discord import Option
 from collections import Counter
 import re
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 class WordStats(commands.Cog):
     def __init__(self, bot):
@@ -36,7 +36,7 @@ class WordStats(commands.Cog):
 
         emoji_pattern = re.compile(r'<a?:\w+:\d+>')
         word_pattern = re.compile(r'\b\w+\b')
-        one_month_ago = datetime.utcnow() - timedelta(days=30)
+        one_month_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
         def clean_word(w):
             return (
