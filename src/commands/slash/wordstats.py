@@ -1,5 +1,4 @@
-def setup(bot):
-    bot.add_cog(WordStats(bot))import discord
+import discord
 from discord.ext import commands
 from discord.commands import Option
 from collections import Counter, defaultdict
@@ -7,6 +6,7 @@ import re
 import os
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, timezone
+import asyncio
 
 class WordStats(commands.Cog):
     def __init__(self, bot):
@@ -59,6 +59,9 @@ class WordStats(commands.Cog):
         plt.close()
         return image_path
 
+    async def generate_trend_image_async(self, timestamps, username):
+        return await asyncio.to_thread(self.generate_trend_image, timestamps, username)
+
     @commands.slash_command(
         name="wordstats",
         description="Analyze and display the most used words by a user in a specific channel."
@@ -79,9 +82,9 @@ class WordStats(commands.Cog):
 
         perms = channel.permissions_for(ctx.guild.me)
         if not perms.read_message_history:
-            return await ctx.respond("❌ I don't have permission to read message history in that channel.", ephemeral=True)
+            return await ctx.respond("I don't have permission to read message history in that channel.", ephemeral=True)
 
-        max_msgs = 10000
+        max_msgs = 1000
         collected_msgs = 0
         max_relevant = 500
 
@@ -103,7 +106,7 @@ class WordStats(commands.Cog):
                     break
 
         except discord.Forbidden:
-            return await ctx.respond("❌ I was denied access to that channel.", ephemeral=True)
+            return await ctx.respond("I was denied access to that channel.", ephemeral=True)
 
         if not word_data:
             embed = discord.Embed(
@@ -150,7 +153,7 @@ class WordStats(commands.Cog):
                     f"{time_range}\n\n{top_text}"
                 )
 
-        image_path = self.generate_trend_image(recent_timestamps, user.display_name)
+        image_path = await self.generate_trend_image_async(recent_timestamps, user.display_name)
         if image_path and os.path.isfile(image_path):
             file = discord.File(image_path, filename="trend.png")
             embed.set_image(url="attachment://trend.png")
