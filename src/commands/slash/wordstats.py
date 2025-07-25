@@ -21,7 +21,7 @@ class WordStats(commands.Cog):
             return set(line.strip().lower() for line in f if line.strip())
 
     def clean_word(self, word):
-        return (
+        return (1
             len(word) > 1 and
             not word.isdigit() and
             word not in self.stopwords
