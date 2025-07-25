@@ -10,6 +10,8 @@ from datetime import datetime, timedelta, timezone
 class WordStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        print("[WordStats] Cog loaded!")
+
         self.stopwords = self.load_stopwords("miscellaneous/text files/stopwords.txt")
         self.emoji_pattern = re.compile(r'<a?:\w+:\d+>')
         self.word_pattern = re.compile(r'\b\w+\b')
