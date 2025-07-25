@@ -1,8 +1,10 @@
+import discord
 from discord.ext import commands
 from discord import Option
-from collections import Counter
+from collections import Counter, defaultdict
 import re
 import os
+import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, timezone
 
 class WordStats(commands.Cog):
@@ -25,6 +27,32 @@ class WordStats(commands.Cog):
             word not in self.stopwords
         )
 
+    def generate_trend_image(self, timestamps, username):
+        daily_counts = defaultdict(int)
+        for ts in timestamps:
+            day = ts.date()
+            daily_counts[day] += 1
+
+        sorted_days = sorted(daily_counts)
+        counts = [daily_counts[day] for day in sorted_days]
+
+        if not sorted_days:
+            return None
+
+        plt.figure(figsize=(10, 4))
+        plt.plot(sorted_days, counts, marker='o', linestyle='-', color='skyblue')
+        plt.fill_between(sorted_days, counts, color='skyblue', alpha=0.3)
+        plt.title(f"{username}'s Message Activity Over Time")
+        plt.xlabel("Date")
+        plt.ylabel("Messages")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+
+        image_path = "trend.png"
+        plt.savefig(image_path)
+        plt.close()
+        return image_path
+
     @commands.slash_command(
         name="wordstats",
         description="See what words a user uses the most (recent messages across server)"
@@ -39,7 +67,7 @@ class WordStats(commands.Cog):
         await ctx.defer()
 
         since_time = datetime.now(timezone.utc) - timedelta(days=days)
-        all_words = []
+        word_data = []
         timestamps = []
 
         for channel in ctx.guild.text_channels:
@@ -54,14 +82,15 @@ class WordStats(commands.Cog):
 
                     text = self.emoji_pattern.sub('', msg.content)
                     words = [w for w in self.word_pattern.findall(text.lower()) if self.clean_word(w)]
+                    for w in words:
+                        word_data.append((msg.created_at, w))
                     if words:
-                        all_words.extend(words)
                         timestamps.append(msg.created_at)
 
             except discord.Forbidden:
                 continue
 
-        if not all_words or not timestamps:
+        if not word_data:
             embed = discord.Embed(
                 title="No Data Found",
                 description=f"No recent messages found for {user.mention}.",
@@ -71,13 +100,14 @@ class WordStats(commands.Cog):
             await ctx.respond(embed=embed)
             return
 
-        word_message_pairs = list(zip(timestamps, all_words))
-        word_message_pairs.sort(reverse=True)
-        recent_words = [w for _, w in word_message_pairs[:500]]
+        word_data.sort(key=lambda x: x[0], reverse=True)
+        word_data = word_data[:500]
+        recent_words = [w for _, w in word_data]
+        recent_timestamps = [ts for ts, _ in word_data]
         collected = len(recent_words)
 
-        newest = max(timestamps).strftime('%Y-%m-%d')
-        oldest = min(timestamps).strftime('%Y-%m-%d')
+        newest = max(recent_timestamps).strftime('%Y-%m-%d')
+        oldest = min(recent_timestamps).strftime('%Y-%m-%d')
         time_range = f"From **{oldest}** to **{newest}**"
 
         embed = discord.Embed(color=discord.Color(0x9FC6F6))
@@ -106,7 +136,13 @@ class WordStats(commands.Cog):
                     f"{time_range}\n\n{top_text}"
                 )
 
-        await ctx.respond(embed=embed)
+        image_path = self.generate_trend_image(recent_timestamps, user.display_name)
+        if image_path and os.path.isfile(image_path):
+            file = discord.File(image_path, filename="trend.png")
+            embed.set_image(url="attachment://trend.png")
+            await ctx.respond(embed=embed, file=file)
+        else:
+            await ctx.respond(embed=embed)
 
 def setup(bot):
     bot.add_cog(WordStats(bot))
