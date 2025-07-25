@@ -38,9 +38,6 @@ jobs:
       - name: Fix missing packages
         run: sudo apt-get update --fix-missing -y
 
-      - name: Install ffmpeg and ffprobe
-        run: sudo apt install ffmpeg -y
-
       - name: install requirements
         run: pip install -r requirements.txt
 
