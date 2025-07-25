@@ -23,7 +23,7 @@ class NextButton(discord.ui.Button):
     async def callback(self, interaction):
         self.paginate.current_page = min(len(self.paginate.pages) - 1, self.paginate.current_page + 1)
         
-        if self.paginate.current_page == 2:
+        if self.paginate.current_page == 3:
             self.style = discord.ButtonStyle.danger
         else:
             self.style = discord.ButtonStyle.success
@@ -33,7 +33,7 @@ class NextButton(discord.ui.Button):
 
 class Paginate:
     def __init__(self, ctx):
-        self.pages = ["", "", ""]
+        self.pages = ["", "", "", ""]  # 4 pages now
         self.current_page = 0
         self.ctx = ctx
         self.prev_button = PrevButton(self)
@@ -70,14 +70,27 @@ class Help(commands.Cog):
         embed1.add_field(name="/__**petpet**__", value="**╰→** Use this Command to Pet User PFPs, Server emotes, or Image URLs")
         embed1.add_field(name="/__**pfp**__", value="**╰→** Get the Profile Picture of the Selected Member")
         embed1.add_field(name="/__**random_song**__", value="**╰→** Get a Random Song from Spotify")
-        embed1.add_field(name="/__**dl_song**__", value="**╰→** Download a song from a Youtube URL")
-        embed1.add_field(name="/__**play_song**__", value="**╰→**Play a song from a Youtube URL")
+        embed1.add_field(name="/__**wordstats**__", value="**╰→** Analyze and display the most used words by a user from recent messages.")
+        embed1.add_field(name="/__**question**__", value="**╰→**Get a random question.")
 
-        embed1.set_footer(text="1/3")
+        embed1.set_footer(text="1/4")
 
         p.pages[0] = str(embed1.to_dict())
 
         # Page 2
+        embed_prefix = discord.Embed(
+            title="Prefix Commands",
+            description="These commands use the classic `!` prefix:",
+            color=discord.Color(0xFFD700)
+        )
+        embed_prefix.add_field(name="**!ping**", value="**╰→** Shows the bot's latency.", inline=False)
+        embed_prefix.add_field(name="**!invite**", value="**╰→** Get the invite link for BubbleBot.", inline=False)
+        embed_prefix.add_field(name="**!uptime**", value="**╰→** Shows how long the bot has been online.", inline=False)
+        embed_prefix.set_footer(text="2/4")
+
+        p.pages[1] = str(embed_prefix.to_dict())
+
+        # Page 3
         embed2 = discord.Embed(
             title="/draw_noise Help",
             description="Here's a list of what each Option does:",
@@ -93,19 +106,18 @@ class Help(commands.Cog):
         embed2.add_field(name="4- **Lacunarity**:", value="Lacunarity affects the frequency of each successive octave. Increasing it can lead to more variations in the noise.")
         embed2.add_field(name="5- **Persistence**:", value="This parameter controls how much each successive octave contributes to the final noise. Values around 0.5 provide a balanced look, while values above 0.5 emphasize the higher octaves.")
 
-        embed2.set_footer(text="2/3")
-        p.pages[1] = str(embed2.to_dict())
+        embed2.set_footer(text="3/4")
+        p.pages[2] = str(embed2.to_dict())
 
-        # Page 3
+        # Page 4
         embed3 = discord.Embed(
             title="THAT'S BASICALLY IT!",
             description="If you encounter any issues or want to share something with us, please don't hesitate to get in touch by using (/contact). We're always here to help! :)",
             color=discord.Color(0xF23F43)
         )
 
-        embed3.set_footer(text="3/3")
-
-        p.pages[2] = str(embed3.to_dict())
+        embed3.set_footer(text="4/4")
+        p.pages[3] = str(embed3.to_dict())
 
         message = await ctx.respond(embed=embed1)
 
