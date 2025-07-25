@@ -45,13 +45,20 @@ class WordStats(commands.Cog):
         if not sorted_days:
             return None
 
-        plt.figure(figsize=(10, 4))
-        plt.plot(sorted_days, counts, marker='o', linestyle='-', color='skyblue')
-        plt.fill_between(sorted_days, counts, color='skyblue', alpha=0.3)
-        plt.title(f"{username}'s Message Activity Over Time")
-        plt.xlabel("Date")
-        plt.ylabel("Messages")
-        plt.xticks(rotation=45)
+        bg_color = "#141318"
+        embed_color = "#9FC6F6"
+
+        plt.figure(figsize=(10, 4), facecolor=bg_color)
+        ax = plt.gca()
+        ax.set_facecolor(bg_color)
+
+        plt.plot(sorted_days, counts, marker='o', linestyle='-', color=embed_color)
+        plt.fill_between(sorted_days, counts, color=embed_color, alpha=0.3)
+        plt.title(f"{username}'s Message Activity Over Time", color='white')
+        plt.xlabel("Date", color='white')
+        plt.ylabel("Messages", color='white')
+        plt.xticks(rotation=45, color='white')
+        plt.yticks(color='white')
         plt.tight_layout()
 
         image_path = "trend.png"
@@ -62,51 +69,61 @@ class WordStats(commands.Cog):
     async def generate_trend_image_async(self, timestamps, username):
         return await asyncio.to_thread(self.generate_trend_image, timestamps, username)
 
-    @commands.slash_command(
-        name="wordstats",
-        description="Analyze and display the most used words by a user in a specific channel."
-    )
-    async def wordstats(
-        self,
-        ctx,
-        user: Option(discord.Member, "The user to analyze"),
-        channel: Option(discord.TextChannel, "Channel to analyze"),
-        word: Option(str, "Specific word to count", required=False) = None,
-        days: Option(int, "How many past days to analyze (default 30)", required=False) = 30
-    ):
-        await ctx.defer()
-
-        since_time = datetime.now(timezone.utc) - timedelta(days=days)
+    async def scan_messages(self, channel, user, since_time, max_msgs, max_relevant):
         word_data = []
         timestamps = []
-
-        perms = channel.permissions_for(ctx.guild.me)
-        if not perms.read_message_history:
-            return await ctx.respond("I don't have permission to read message history in that channel.", ephemeral=True)
-
-        max_msgs = 1000
         collected_msgs = 0
-        max_relevant = 500
-
         try:
             async for msg in channel.history(limit=max_msgs, after=since_time, oldest_first=False):
                 if msg.author.id != user.id or msg.author.bot or not msg.content.strip():
                     continue
-
                 words_raw = self.word_pattern.findall(msg.content)
                 words = [w for w in words_raw if self.clean_word(w)]
-
                 if words:
                     timestamps.append(msg.created_at)
                     for w in words:
                         word_data.append((msg.created_at, w))
                     collected_msgs += 1
-
                 if collected_msgs >= max_relevant:
                     break
-
         except discord.Forbidden:
+            return None, None
+        return word_data, timestamps
+
+    @commands.slash_command(
+        name="wordstats",
+        description="Analyze and display the most used words by a user in a channel (optional)."
+    )
+    async def wordstats(
+        self,
+        ctx,
+        user: Option(discord.Member, "The user to analyze"),
+        channel: Option(discord.TextChannel, "Channel to analyze", required=False) = None,
+        word: Option(str, "Specific word to count", required=False) = None,
+        days: Option(int, "How many past days to analyze (default 30)", required=False) = 30
+    ):
+        await ctx.defer()
+        channel = channel or ctx.channel
+        perms = channel.permissions_for(ctx.guild.me)
+        if not perms.read_message_history:
+            return await ctx.respond("I don't have permission to read message history in that channel.", ephemeral=True)
+
+        max_msgs = 1000
+        max_relevant = 500
+        since_time = datetime.now(timezone.utc) - timedelta(days=days)
+
+        word_data, timestamps = await self.scan_messages(channel, user, since_time, max_msgs, max_relevant)
+        if word_data is None:
             return await ctx.respond("I was denied access to that channel.", ephemeral=True)
+
+        while word_data and len(word_data) < max_relevant:
+            new_since_time = since_time - timedelta(days=30)
+            additional_data, additional_timestamps = await self.scan_messages(channel, user, new_since_time, max_msgs, max_relevant - len(word_data))
+            if additional_data is None or not additional_data:
+                break
+            word_data.extend(additional_data)
+            timestamps.extend(additional_timestamps)
+            since_time = new_since_time
 
         if not word_data:
             embed = discord.Embed(
