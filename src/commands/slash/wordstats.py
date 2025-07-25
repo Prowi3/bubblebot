@@ -1,5 +1,4 @@
-def setup(bot):
-    bot.add_cog(WordStats(bot))import discord
+import discord
 from discord.ext import commands
 from discord import Option
 from collections import Counter
