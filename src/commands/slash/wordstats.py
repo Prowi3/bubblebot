@@ -1,4 +1,5 @@
-import discord
+def setup(bot):
+    bot.add_cog(WordStats(bot))import discord
 from discord.ext import commands
 from discord import Option
 from collections import Counter
@@ -25,7 +26,8 @@ class WordStats(commands.Cog):
         self,
         ctx,
         user: Option(discord.Member, "The user to analyze"),
-        word: Option(str, "Specific word to count", required=False) = None
+        word: Option(str, "Specific word to count", required=False) = None,
+        days: Option(int, "How many past days to analyze (default 30)", required=False) = 30
     ):
         await ctx.defer()
 
@@ -36,7 +38,7 @@ class WordStats(commands.Cog):
 
         emoji_pattern = re.compile(r'<a?:\w+:\d+>')
         word_pattern = re.compile(r'\b\w+\b')
-        one_month_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        since_time = datetime.now(timezone.utc) - timedelta(days=days)
 
         def clean_word(w):
             return (
@@ -51,18 +53,9 @@ class WordStats(commands.Cog):
                 continue
 
             try:
-                recent = [
-                    msg async for msg in channel.history(limit=20, oldest_first=False)
-                    if msg.author.id == user.id and not msg.author.bot and msg.created_at >= one_month_ago
-                ]
-                if not recent:
-                    continue
-
-                async for msg in channel.history(limit=1000, oldest_first=False):
+                async for msg in channel.history(limit=1000, oldest_first=False, after=since_time):
                     if msg.author.id != user.id or msg.author.bot:
                         continue
-                    if msg.created_at < one_month_ago:
-                        break
                     if not msg.content or all(char.isspace() for char in msg.content):
                         continue
 
