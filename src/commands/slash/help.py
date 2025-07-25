@@ -33,7 +33,7 @@ class NextButton(discord.ui.Button):
 
 class Paginate:
     def __init__(self, ctx):
-        self.pages = ["", "", "", ""]  # 4 pages now
+        self.pages = ["", "", "", ""]
         self.current_page = 0
         self.ctx = ctx
         self.prev_button = PrevButton(self)
@@ -78,46 +78,47 @@ class Help(commands.Cog):
         p.pages[0] = str(embed1.to_dict())
 
         # Page 2
-        embed_prefix = discord.Embed(
+        embed2 = discord.Embed(
             title="Prefix Commands",
             description="These commands use the `BB` prefix:",
-            color=discord.Color(0xFFD700)
+            color=discord.Color(0x9FC6F6)
         )
-        embed_prefix.add_field(name="**bb ser/search**", value="**╰→** Search for any image.", inline=False)
-        embed_prefix.add_field(name="**bb gl/google**", value="**╰→** same as search but better", inline=False)
-        embed_prefix.add_field(name="**bb test**", value="**╰→** check if the bot is working or not", inline=False)
-        embed_prefix.set_footer(text="2/4")
+        embed2.set_thumbnail(url=thumbnail_url)
+        embed2.add_field(name="**bb ser/search**", value="**╰→** Search for any image.", inline=False)
+        embed2.add_field(name="**bb gl/google**", value="**╰→** same as search but better", inline=False)
+        embed2.add_field(name="**bb test**", value="**╰→** check if the bot is working or not", inline=False)
+        embed2.set_footer(text="2/4")
 
-        p.pages[1] = str(embed_prefix.to_dict())
+        p.pages[1] = str(embed2.to_dict())
 
         # Page 3
-        embed2 = discord.Embed(
+        embed3 = discord.Embed(
             title="/draw_noise Help",
             description="Here's a list of what each Option does:",
             color=discord.Color(0xFFFFFF)
         )
 
         thumbnail_url2 = "https://cdn.discordapp.com/attachments/1142411437688500274/1149559291313922098/New_Project_341_D93B16A.gif"
-        embed2.set_thumbnail(url=thumbnail_url2)
+        embed3.set_thumbnail(url=thumbnail_url2)
 
-        embed2.add_field(name="1- **Font**:", value="Select your favorite Font")
-        embed2.add_field(name="2- **Text**:", value="Anything you type will show up in the image. You can also use '/' to separate lines example = 'Bubble/Bot' (Emojis and emotes won't work)")
-        embed2.add_field(name="3- **Octaves**:", value="You can vary the number of octaves to control the level of detail in the noise. Higher octaves create more intricate patterns, Values around 1-10 are recommend.")
-        embed2.add_field(name="4- **Lacunarity**:", value="Lacunarity affects the frequency of each successive octave. Increasing it can lead to more variations in the noise.")
-        embed2.add_field(name="5- **Persistence**:", value="This parameter controls how much each successive octave contributes to the final noise. Values around 0.5 provide a balanced look, while values above 0.5 emphasize the higher octaves.")
+        embed3.add_field(name="1- **Font**:", value="Select your favorite Font")
+        embed3.add_field(name="2- **Text**:", value="Anything you type will show up in the image. You can also use '/' to separate lines example = 'Bubble/Bot' (Emojis and emotes won't work)")
+        embed3.add_field(name="3- **Octaves**:", value="You can vary the number of octaves to control the level of detail in the noise. Higher octaves create more intricate patterns, Values around 1-10 are recommend.")
+        embed3.add_field(name="4- **Lacunarity**:", value="Lacunarity affects the frequency of each successive octave. Increasing it can lead to more variations in the noise.")
+        embed3.add_field(name="5- **Persistence**:", value="This parameter controls how much each successive octave contributes to the final noise. Values around 0.5 provide a balanced look, while values above 0.5 emphasize the higher octaves.")
 
-        embed2.set_footer(text="3/4")
-        p.pages[2] = str(embed2.to_dict())
+        embed3.set_footer(text="3/4")
+        p.pages[2] = str(embed3.to_dict())
 
         # Page 4
-        embed3 = discord.Embed(
+        embed4 = discord.Embed(
             title="THAT'S BASICALLY IT!",
             description="If you encounter any issues or want to share something with us, please don't hesitate to get in touch by using (/contact). We're always here to help! :)",
             color=discord.Color(0xF23F43)
         )
 
         embed3.set_footer(text="4/4")
-        p.pages[3] = str(embed3.to_dict())
+        p.pages[3] = str(embed4.to_dict())
 
         message = await ctx.respond(embed=embed1)
 
