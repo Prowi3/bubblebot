@@ -12,7 +12,6 @@ class WordStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         print("[WordStats] Cog loaded!")
-
         self.stopwords = self.load_stopwords("miscellaneous/text files/stopwords.txt")
         self.word_pattern = re.compile(r"\b[a-zA-Z']+\b")
 
@@ -74,7 +73,6 @@ class WordStats(commands.Cog):
 
     async def scan_messages(self, channel, user, since_time, max_msgs, max_relevant):
         word_data = []
-        timestamps = []
         collected_msgs = 0
         try:
             async for msg in channel.history(limit=max_msgs, after=since_time, oldest_first=False):
@@ -83,7 +81,6 @@ class WordStats(commands.Cog):
                 words_raw = self.word_pattern.findall(msg.content)
                 words = [w for w in words_raw if self.clean_word(w)]
                 if words:
-                    timestamps.append(msg.created_at)
                     for w in words:
                         word_data.append((msg.created_at, w))
                     collected_msgs += 1
@@ -91,7 +88,7 @@ class WordStats(commands.Cog):
                     break
         except discord.Forbidden:
             return None, None
-        return word_data, timestamps
+        return word_data, None
 
     @commands.slash_command(
         name="wordstats",
@@ -115,17 +112,16 @@ class WordStats(commands.Cog):
         max_relevant = 500
         since_time = datetime.now(timezone.utc) - timedelta(days=days)
 
-        word_data, timestamps = await self.scan_messages(channel, user, since_time, max_msgs, max_relevant)
+        word_data, _ = await self.scan_messages(channel, user, since_time, max_msgs, max_relevant)
         if word_data is None:
             return await ctx.respond("I was denied access to that channel.", ephemeral=True)
 
         while word_data and len(word_data) < max_relevant:
             new_since_time = since_time - timedelta(days=30)
-            additional_data, additional_timestamps = await self.scan_messages(channel, user, new_since_time, max_msgs, max_relevant - len(word_data))
+            additional_data, _ = await self.scan_messages(channel, user, new_since_time, max_msgs, max_relevant - len(word_data))
             if additional_data is None or not additional_data:
                 break
             word_data.extend(additional_data)
-            timestamps.extend(additional_timestamps)
             since_time = new_since_time
 
         if not word_data:
@@ -140,16 +136,16 @@ class WordStats(commands.Cog):
         word_data.sort(key=lambda x: x[0], reverse=True)
         word_data = word_data[:max_relevant]
         recent_words = [w for _, w in word_data]
-        recent_timestamps = [ts for ts, _ in word_data]
+        all_timestamps = [ts for ts, _ in word_data]
         collected = len(recent_words)
 
-        newest = max(recent_timestamps).strftime('%Y-%m-%d')
-        oldest = min(recent_timestamps).strftime('%Y-%m-%d')
+        newest = max(all_timestamps).strftime('%Y-%m-%d')
+        oldest = min(all_timestamps).strftime('%Y-%m-%d')
         time_range = f"From **{oldest}** to **{newest}**"
 
         embed = discord.Embed(color=discord.Color(0x9FC6F6))
         embed.set_author(name=f"Word Stats for {user.display_name}", icon_url=user.display_avatar.url)
-        embed.set_footer(text=f"Requested by {ctx.author.display_name}")
+        embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
 
         if word:
             cleaned_word = word.lower().strip()
@@ -173,7 +169,7 @@ class WordStats(commands.Cog):
                     f"{time_range}\n\n{top_text}"
                 )
 
-        image_path = await self.generate_trend_image_async(recent_timestamps, user.display_name)
+        image_path = await self.generate_trend_image_async(all_timestamps, user.display_name)
         if image_path and os.path.isfile(image_path):
             file = discord.File(image_path, filename="trend.png")
             embed.set_image(url="attachment://trend.png")
