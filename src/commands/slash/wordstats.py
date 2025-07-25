@@ -55,7 +55,7 @@ class WordStats(commands.Cog):
 
     @commands.slash_command(
         name="wordstats",
-        description="See what words a user uses the most (recent messages across server)"
+        description="Analyze and display the most used words by a user from recent messages."
     )
     async def wordstats(
         self,
