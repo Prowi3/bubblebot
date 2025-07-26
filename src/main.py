@@ -146,7 +146,7 @@ async def ai_chat(message):
 
             try:
                 response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+                    model="moonshotai/kimi-k2-instruct",
                     messages=chat_history,
                     max_tokens=450,
                     temperature=1.0,
