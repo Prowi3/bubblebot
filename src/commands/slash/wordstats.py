@@ -7,13 +7,15 @@ import os
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, timezone
 import asyncio
+import uuid
 
 class WordStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         print("[WordStats] Cog loaded!")
         self.stopwords = self.load_stopwords("miscellaneous/text files/stopwords.txt")
-        self.word_pattern = re.compile(r"\b[a-zA-Z']+\b")
+        self.word_pattern = re.compile(r"\b[a-zA-Z]{2,}\b")
+        self.link_mention_pattern = re.compile(r"https?://\S+|<[@#&]?\d+>")
 
     def load_stopwords(self, filepath):
         if not os.path.isfile(filepath):
@@ -22,12 +24,9 @@ class WordStats(commands.Cog):
             return set(line.strip().lower() for line in f if line.strip())
 
     def clean_word(self, word):
-        word = word.lower()
-        if len(word) <= 1:
+        if word in self.stopwords:
             return False
         if any(char.isdigit() for char in word):
-            return False
-        if word in self.stopwords:
             return False
         if all(c == '_' for c in word):
             return False
@@ -38,11 +37,11 @@ class WordStats(commands.Cog):
         for ts in timestamps:
             daily_counts[ts.date()] += 1
 
+        if not daily_counts:
+            return None
+
         sorted_days = sorted(daily_counts)
         counts = [daily_counts[day] for day in sorted_days]
-
-        if not sorted_days:
-            return None
 
         bg_color = "#141318"
         embed_color = "#9FC6F6"
@@ -63,8 +62,8 @@ class WordStats(commands.Cog):
         plt.yticks(color='white')
         plt.tight_layout()
 
-        image_path = "trend.png"
-        plt.savefig(image_path)
+        image_path = f"trend_{uuid.uuid4().hex}.png"
+        plt.savefig(image_path, bbox_inches='tight', transparent=False)
         plt.close()
         return image_path
 
@@ -78,12 +77,15 @@ class WordStats(commands.Cog):
             async for msg in channel.history(limit=max_msgs, after=since_time, oldest_first=False):
                 if msg.author.id != user.id or msg.author.bot or not msg.content.strip():
                     continue
-                words_raw = self.word_pattern.findall(msg.content)
+
+                msg_text = self.link_mention_pattern.sub("", msg.content.lower())
+                words_raw = self.word_pattern.findall(msg_text)
                 words = [w for w in words_raw if self.clean_word(w)]
+
                 if words:
-                    for w in words:
-                        word_data.append((msg.created_at, w))
+                    word_data.extend((msg.created_at, w) for w in words)
                     collected_msgs += 1
+
                 if collected_msgs >= max_relevant:
                     break
         except discord.Forbidden:
@@ -111,6 +113,8 @@ class WordStats(commands.Cog):
         max_msgs = 1000
         max_relevant = 500
         since_time = datetime.now(timezone.utc) - timedelta(days=days)
+        max_history_days = 180  # limit how far back we scan
+        oldest_allowed = datetime.now(timezone.utc) - timedelta(days=max_history_days)
 
         word_data, _ = await self.scan_messages(channel, user, since_time, max_msgs, max_relevant)
         if word_data is None:
@@ -118,6 +122,8 @@ class WordStats(commands.Cog):
 
         while word_data and len(word_data) < max_relevant:
             new_since_time = since_time - timedelta(days=30)
+            if new_since_time < oldest_allowed:
+                break
             additional_data, _ = await self.scan_messages(channel, user, new_since_time, max_msgs, max_relevant - len(word_data))
             if additional_data is None or not additional_data:
                 break
@@ -141,7 +147,7 @@ class WordStats(commands.Cog):
 
         newest = max(all_timestamps).strftime('%Y-%m-%d')
         oldest = min(all_timestamps).strftime('%Y-%m-%d')
-        time_range = f"From **{oldest}** to **{newest}**"
+        time_range = f"**Message Range:** From **{oldest}** to **{newest}**"
 
         embed = discord.Embed(color=discord.Color(0x9FC6F6))
         embed.set_author(name=f"Word Stats for {user.display_name}", icon_url=user.display_avatar.url)
@@ -174,6 +180,7 @@ class WordStats(commands.Cog):
             file = discord.File(image_path, filename="trend.png")
             embed.set_image(url="attachment://trend.png")
             await ctx.respond(embed=embed, file=file)
+            os.remove(image_path)
         else:
             await ctx.respond(embed=embed)
 
