@@ -146,7 +146,7 @@ async def ai_chat(message):
 
             try:
                 response = client.chat.completions.create(
-                    model="moonshotai/kimi-k2-instruct",
+                    model="compound-beta",
                     messages=chat_history,
                     max_tokens=450,
                     temperature=1.0,
