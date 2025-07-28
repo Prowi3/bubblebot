@@ -9,7 +9,6 @@ from noise import pnoise2
 fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
 noise_types = ['Perlin', 'Voronoi', 'Turbulence']
 presets = ['default', 'vaporwave', 'nebula', 'lava', 'steel']
-
 is_rendering = False
 
 class DrawNoise(commands.Cog):
@@ -28,13 +27,13 @@ class DrawNoise(commands.Cog):
     ):
         global is_rendering
         if is_rendering:
-            await ctx.send("Sorry, an image is already being rendered.")
+            await ctx.respond("Sorry, an image is already being rendered.")
             return
 
+        await ctx.defer()
         is_rendering = True
         try:
             width, height = 1080, 1080
-            image = Image.new('RGB', (width, height))
             scale = 300.0
             offset_x = random.uniform(0, 1000)
             offset_y = random.uniform(0, 1000)
@@ -75,11 +74,13 @@ class DrawNoise(commands.Cog):
                 base_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
             r_base, g_base, b_base = base_color
-            pixels = np.zeros((height, width, 3), dtype=np.uint8)
+            image = Image.new('RGB', (width, height))
+            pixels = image.load()
 
             for y in range(height):
                 for x in range(width):
-                    nx, ny = (x + offset_x) / scale, (y + offset_y) / scale
+                    nx = (x + offset_x) / scale
+                    ny = (y + offset_y) / scale
                     if noise_type == "Perlin":
                         val = perlin_noise(nx, ny)
                     elif noise_type == "Voronoi":
@@ -92,46 +93,42 @@ class DrawNoise(commands.Cog):
                     r = np.clip(r_base + brightness, 0, 255)
                     g = np.clip(g_base + brightness, 0, 255)
                     b = np.clip(b_base + brightness, 0, 255)
-                    pixels[y, x] = [r, g, b]
-
-            image = Image.fromarray(pixels)
+                    pixels[x, y] = (int(r), int(g), int(b))
 
             if text:
                 draw = ImageDraw.Draw(image)
                 font_size = int(math.sqrt(width * height) / len(text)) + 25
                 font_path = f"miscellaneous/Fonts/{font}.ttf"
-                font = ImageFont.truetype(font_path, font_size)
-
+                font_obj = ImageFont.truetype(font_path, font_size)
                 text_lines = text.split('/')
                 text_image = Image.new('RGB', (width, height))
                 text_draw = ImageDraw.Draw(text_image)
 
-                line_bboxes = [font.getbbox(line) for line in text_lines]
+                line_bboxes = [font_obj.getbbox(line) for line in text_lines]
                 line_heights = [bbox[3] - bbox[1] for bbox in line_bboxes]
                 total_text_height = sum(line_heights)
                 y = (height - total_text_height) // 2
 
-                for i, line in enumerate(text_lines):
-                    bbox = font.getbbox(line)
+                for line in text_lines:
+                    bbox = font_obj.getbbox(line)
                     text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
                     x = (width - text_width) // 2
-                    text_draw.text((x, y - bbox[1]), line, fill=(255, 255, 255), font=font)
-                    y += text_height
+                    text_draw.text((x, y - bbox[1]), line, fill=(255, 255, 255), font=font_obj)
+                    y += bbox[3] - bbox[1]
 
                 image = ImageChops.soft_light(image, text_image)
 
-            embed_color = discord.Color.from_rgb(*base_color)
             image.save('gradient.png')
-            file_path = 'gradient.png'
-            file = discord.File(file_path)
-            embed = discord.Embed(title="Here's your image.", color=embed_color)
+            file = discord.File('gradient.png')
+            embed = discord.Embed(title="Here's your image.", color=discord.Color.from_rgb(*base_color))
             embed.set_image(url="attachment://gradient.png")
             await ctx.respond(file=file, embed=embed)
 
         except Exception as e:
-            await ctx.respond(f"An error occurred: {str(e)}")
-
+            try:
+                await ctx.respond(f"An error occurred: {str(e)}")
+            except discord.NotFound:
+                pass
         finally:
             is_rendering = False
 
