@@ -22,7 +22,6 @@ def rgb_split(img, amount=5):
     return Image.merge("RGB", (r, g, b))
 
 def swirl_effect(img, strength=5):
-    import math
     width, height = img.size
     center_x, center_y = width / 2, height / 2
     pixels = img.load()
@@ -57,12 +56,46 @@ def wave_distortion(img, amplitude=10, frequency=20):
                 result_pixels[x, y] = (0, 0, 0)
     return result
 
-def invert_colors(img):
-    return ImageOps.invert(img)
-
 def pixelate(img, pixel_size=16):
     small = img.resize((img.width // pixel_size, img.height // pixel_size), resample=Image.NEAREST)
     return small.resize(img.size, Image.NEAREST)
+
+class VoronoiGenerator:
+    def __init__(self, width, height, cell_size):
+        self.cell_size = cell_size
+        self.points = {}
+        gx_max = (width // cell_size) + 3
+        gy_max = (height // cell_size) + 3
+        for gx in range(gx_max):
+            for gy in range(gy_max):
+                random.seed(gx * 1000 + gy)
+                px = gx * cell_size + random.uniform(0, cell_size)
+                py = gy * cell_size + random.uniform(0, cell_size)
+                self.points[(gx, gy)] = (px, py)
+
+    def noise(self, x, y):
+        gx = int(x // self.cell_size)
+        gy = int(y // self.cell_size)
+        min_dist = float('inf')
+        for dx in range(-1, 2):
+            for dy in range(-1, 2):
+                px, py = self.points.get((gx + dx, gy + dy), (0, 0))
+                dist = (x - px) ** 2 + (y - py) ** 2
+                if dist < min_dist:
+                    min_dist = dist
+        return 1 - min_dist / (self.cell_size * self.cell_size)
+
+def turbulence_noise(x, y, octaves=4):
+    value = 0
+    frequency = 1
+    amplitude = 1
+    max_value = 0
+    for _ in range(octaves):
+        value += abs(pnoise2(x * frequency, y * frequency, repeatx=1024, repeaty=1024)) * amplitude
+        max_value += amplitude
+        amplitude /= 2
+        frequency *= 2
+    return value / max_value
 
 class DrawNoise(commands.Cog):
     def __init__(self, bot):
@@ -96,29 +129,10 @@ class DrawNoise(commands.Cog):
             PERSISTENCE = 0.5
             LACUNARITY = 5.0
 
+            voronoi_gen = VoronoiGenerator(width, height, cell_size=50)
+
             def perlin_noise(x, y):
                 return pnoise2(x, y, octaves=OCTAVES, persistence=PERSISTENCE, lacunarity=LACUNARITY, repeatx=1024, repeaty=1024, base=1)
-
-            def voronoi_noise(x, y):
-                cell_size = 50
-                gx = int(x // cell_size)
-                gy = int(y // cell_size)
-                min_dist = float('inf')
-                for dx in range(-1, 2):
-                    for dy in range(-1, 2):
-                        px = (gx + dx) * cell_size + random.random() * cell_size
-                        py = (gy + dy) * cell_size + random.random() * cell_size
-                        dist = (x - px) ** 2 + (y - py) ** 2
-                        min_dist = min(min_dist, dist)
-                return 1 - min_dist / (cell_size * cell_size)
-
-            def turbulence_noise(x, y):
-                value = 0
-                size = 128
-                while size >= 1:
-                    value += abs(pnoise2(x / size, y / size, octaves=OCTAVES, persistence=PERSISTENCE, lacunarity=LACUNARITY, repeatx=1024, repeaty=1024, base=0)) * size
-                    size /= 2.0
-                return value / 128
 
             if preset == "vaporwave":
                 base_color = (255, 102, 204)
@@ -141,13 +155,15 @@ class DrawNoise(commands.Cog):
                     ny = (y + offset_y) / scale
                     if noise_type == "Perlin":
                         val = perlin_noise(nx, ny)
+                        brightness = int((val + 1) / 2 * 180)
                     elif noise_type == "Voronoi":
-                        val = voronoi_noise(x, y)
+                        val = voronoi_gen.noise(x, y)
+                        brightness = int(val * 255)
                     elif noise_type == "Turbulence":
-                        val = turbulence_noise(x + offset_x, y + offset_y)
+                        val = turbulence_noise(nx, ny, octaves=4)
+                        brightness = int(val * 255)
                     else:
-                        val = 0
-                    brightness = int((val + 1) / 2 * 100)
+                        brightness = 0
                     r = np.clip(r_base + brightness, 0, 255)
                     g = np.clip(g_base + brightness, 0, 255)
                     b = np.clip(b_base + brightness, 0, 255)
