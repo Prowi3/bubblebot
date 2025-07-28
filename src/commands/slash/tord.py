@@ -11,7 +11,6 @@ client = Groq(api_key=os.environ["GPTKEY"])
 class TruthOrDare(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.bot.add_view(TruthOrDareView())
 
     @commands.slash_command(name="tod", description="Play a round of Truth or Dare!")
     async def truth_or_dare(self, ctx):
@@ -30,27 +29,33 @@ class TruthOrDareView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Truth", style=discord.ButtonStyle.primary, custom_id="truth_button")
+    @discord.ui.button(label="Truth", style=discord.ButtonStyle.primary)
     async def truth_button(self, button: Button, interaction: discord.Interaction):
-        await interaction.response.defer()
         prompt = (
             "Generate a creative, funny, or thought-provoking truth question for a truth or dare game. "
             "Avoid general or hypothetical questions like 'If you could...' or 'what animal would you be'. "
             "Make it feel social, emotional, or personal. Just the question. No explanation."
         )
         question = await fetch_prompt(prompt)
-        await interaction.followup.send(f"**Truth:** {question}", embed=get_embed(), view=TruthOrDareView())
+        await interaction.response.send_message(
+            f"**Truth:** {question}",
+            embed=get_embed(),
+            view=TruthOrDareView()
+        )
 
-    @discord.ui.button(label="Dare", style=discord.ButtonStyle.success, custom_id="dare_button")
+    @discord.ui.button(label="Dare", style=discord.ButtonStyle.success)
     async def dare_button(self, button: Button, interaction: discord.Interaction):
-        await interaction.response.defer()
         prompt = (
             "Generate a realistic, funny, or slightly embarrassing dare that someone can actually perform in a Discord chat. "
             "Examples: send a funny message, tag someone, type backwards, speak like a pirate, etc. "
             "Avoid physical dares, absurd things, or anything inappropriate. Just the dare. No explanation."
         )
         dare = await fetch_prompt(prompt)
-        await interaction.followup.send(f"**Dare:** {dare}", embed=get_embed(), view=TruthOrDareView())
+        await interaction.response.send_message(
+            f"**Dare:** {dare}",
+            embed=get_embed(),
+            view=TruthOrDareView()
+        )
 
 async def fetch_prompt(prompt: str) -> str:
     try:
