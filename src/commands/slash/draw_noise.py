@@ -28,18 +28,18 @@ presets = {
     },
     "Frostbite": {
         "color": (200, 240, 255),
-        "octaves": 3,
+        "octaves": 6,
         "lacunarity": 4.0,
-        "persistence": 0.5,
-        "scale": 220.0,
+        "persistence": 0.4,
+        "scale": 120.0,
         "noise_type": "simplex"
     },
     "Toxic": {
         "color": (80, 255, 80),
-        "octaves": 2,
+        "octaves": 8,
         "lacunarity": 5.0,
-        "persistence": 0.9,
-        "scale": 150.0,
+        "persistence": 0.3,
+        "scale": 140.0,
         "noise_type": "simplex"
     },
     "Crimson": {
@@ -68,10 +68,10 @@ presets = {
     },
     "Cosmic": {
         "color": (50, 10, 100),
-        "octaves": 5,
+        "octaves": 6,
         "lacunarity": 3.5,
-        "persistence": 0.8,
-        "scale": 200.0,
+        "persistence": 0.7,
+        "scale": 160.0,
         "noise_type": "simplex"
     },
     "Void": {
@@ -81,6 +81,22 @@ presets = {
         "persistence": 0.4,
         "scale": 180.0,
         "noise_type": "none"
+    },
+    "Turbulence": {
+        "color": (100, 120, 200),
+        "octaves": 4,
+        "lacunarity": 3.0,
+        "persistence": 0.5,
+        "scale": 150.0,
+        "noise_type": "turbulence"
+    },
+    "Voronoi": {
+        "color": (40, 200, 150),
+        "octaves": 1,
+        "lacunarity": 2.0,
+        "persistence": 0.5,
+        "scale": 25.0,
+        "noise_type": "voronoi"
     }
 }
 
@@ -117,7 +133,20 @@ def generate_value_noise(width, height, scale, seed=0):
             nxy = lerp(nx0, nx1, wy)
 
             noise[y, x] = nxy
-    return noise * 2 - 1  # scale to -1..1
+    return noise * 2 - 1
+
+def generate_voronoi_noise(width, height, scale, points_count=50, seed=0):
+    random.seed(seed)
+    points = [(random.uniform(0, width), random.uniform(0, height)) for _ in range(points_count)]
+    noise = np.zeros((height, width))
+    for y in range(height):
+        for x in range(width):
+            distances = [math.hypot(x - px, y - py) for px, py in points]
+            noise[y, x] = min(distances)
+    noise = noise / noise.max()
+    noise = 1.0 - noise
+    noise = noise * 2 - 1
+    return noise
 
 class DrawNoise(commands.Cog):
     def __init__(self, bot):
@@ -134,7 +163,7 @@ class DrawNoise(commands.Cog):
         lacunarity: discord.Option(float, description="Noise frequency (default 5.0)") = 5.0,
         persistence: discord.Option(float, description="Noise strength (default 0.5)") = 0.5,
         preset: discord.Option(str, description="Choose a visual theme", choices=["None"] + list(presets.keys())) = "None",
-        noise_type: discord.Option(str, description="Noise algorithm to use", choices=["perlin", "simplex", "value", "none"]) = "perlin"
+        noise_type: discord.Option(str, description="Noise algorithm to use", choices=["perlin", "simplex", "value", "voronoi", "none", "turbulence"]) = "perlin"
     ):
         global is_rendering
         if is_rendering:
@@ -167,6 +196,13 @@ class DrawNoise(commands.Cog):
                 np.arange(height) + offset_y
             )
 
+            def normalize(arr):
+                arr_min = arr.min()
+                arr_max = arr.max()
+                if arr_max - arr_min == 0:
+                    return np.zeros_like(arr)
+                return (arr - arr_min) / (arr_max - arr_min) * 2 - 1
+
             if noise_type == "perlin":
                 pnoise2_vectorized = np.vectorize(pnoise2)
                 noise_vals = pnoise2_vectorized(
@@ -179,6 +215,8 @@ class DrawNoise(commands.Cog):
                     repeaty=1024,
                     base=1
                 )
+                noise_vals = normalize(noise_vals)
+
             elif noise_type == "simplex":
                 snoise2_vectorized = np.vectorize(snoise2)
                 noise_vals = snoise2_vectorized(
@@ -191,9 +229,44 @@ class DrawNoise(commands.Cog):
                     repeaty=1024,
                     base=1
                 )
+                noise_vals = normalize(noise_vals)
+
             elif noise_type == "value":
-                noise_vals = generate_value_noise(width, height, scale, seed=random.randint(0,10000))
-            else:  # none, solid color background
+                noise_vals = generate_value_noise(width, height, scale, seed=random.randint(0, 10000))
+
+            elif noise_type == "voronoi":
+                noise_vals = generate_voronoi_noise(width, height, scale, points_count=75, seed=random.randint(0, 10000))
+
+            elif noise_type == "turbulence":
+                pnoise2_vectorized = np.vectorize(pnoise2)
+                snoise2_vectorized = np.vectorize(snoise2)
+
+                perlin_noise = pnoise2_vectorized(
+                    x_coords / scale,
+                    y_coords / scale,
+                    octaves=octaves,
+                    persistence=persistence,
+                    lacunarity=lacunarity,
+                    repeatx=1024,
+                    repeaty=1024,
+                    base=1
+                )
+
+                simplex_noise = snoise2_vectorized(
+                    x_coords / (scale / 2),
+                    y_coords / (scale / 2),
+                    octaves=octaves,
+                    persistence=persistence / 2,
+                    lacunarity=lacunarity,
+                    repeatx=1024,
+                    repeaty=1024,
+                    base=42
+                )
+
+                combined = (perlin_noise + simplex_noise) / 2.0
+                noise_vals = normalize(combined)
+
+            else:  # none
                 noise_vals = np.zeros((height, width))
 
             r, g, b = hue_color
