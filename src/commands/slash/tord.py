@@ -1,3 +1,4 @@
+import discord
 from discord.ext import commands
 from discord.ui import View, Button
 import os
@@ -11,7 +12,7 @@ class TruthOrDare(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="tod", description="Play a round of Truth or Dare!")
+    @commands.slash_command(name="truthordare", description="Play a round of Truth or Dare!")
     async def truth_or_dare(self, ctx):
         await ctx.defer()
         embed = get_embed()
