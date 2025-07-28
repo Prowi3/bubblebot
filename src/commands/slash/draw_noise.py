@@ -3,7 +3,7 @@ import numpy as np
 import random
 import math
 import os
-from noise import pnoise2
+from noise import pnoise2, snoise2
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
@@ -56,6 +56,39 @@ presets = {
 
 is_rendering = False
 
+def generate_value_noise(width, height, scale, seed=0):
+    random.seed(seed)
+    grid_size = int(scale)
+    grid = np.random.rand(grid_size + 1, grid_size + 1)
+    def lerp(a, b, t):
+        return a + t * (b - a)
+    def smoothstep(t):
+        return t * t * (3 - 2 * t)
+    noise = np.zeros((height, width))
+    for y in range(height):
+        for x in range(width):
+            gx = (x / width) * grid_size
+            gy = (y / height) * grid_size
+            ix = int(gx)
+            iy = int(gy)
+            fx = gx - ix
+            fy = gy - iy
+
+            v00 = grid[iy][ix]
+            v10 = grid[iy][ix + 1]
+            v01 = grid[iy + 1][ix]
+            v11 = grid[iy + 1][ix + 1]
+
+            wx = smoothstep(fx)
+            wy = smoothstep(fy)
+
+            nx0 = lerp(v00, v10, wx)
+            nx1 = lerp(v01, v11, wx)
+            nxy = lerp(nx0, nx1, wy)
+
+            noise[y, x] = nxy
+    return noise * 2 - 1
+
 class DrawNoise(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -70,7 +103,8 @@ class DrawNoise(commands.Cog):
         octaves: discord.Option(int, description="Noise detail level (1–10, default 1)") = 1,
         lacunarity: discord.Option(float, description="Noise frequency (default 5.0)") = 5.0,
         persistence: discord.Option(float, description="Noise strength (default 0.5)") = 0.5,
-        preset: discord.Option(str, description="Choose a visual theme", choices=["None"] + list(presets.keys())) = "None"
+        preset: discord.Option(str, description="Choose a visual theme", choices=["None"] + list(presets.keys())) = "None",
+        noise_type: discord.Option(str, description="Noise algorithm to use", choices=["perlin", "simplex", "value", "none"]) = "perlin"
     ):
         global is_rendering
         if is_rendering:
@@ -96,22 +130,40 @@ class DrawNoise(commands.Cog):
 
             offset_x = random.uniform(0, 1000)
             offset_y = random.uniform(0, 1000)
+
             x_coords, y_coords = np.meshgrid(
                 np.arange(width) + offset_x,
                 np.arange(height) + offset_y
             )
 
-            pnoise2_vectorized = np.vectorize(pnoise2)
-            noise_vals = pnoise2_vectorized(
-                x_coords / scale,
-                y_coords / scale,
-                octaves=octaves,
-                persistence=persistence,
-                lacunarity=lacunarity,
-                repeatx=1024,
-                repeaty=1024,
-                base=1
-            )
+            if noise_type == "perlin":
+                pnoise2_vectorized = np.vectorize(pnoise2)
+                noise_vals = pnoise2_vectorized(
+                    x_coords / scale,
+                    y_coords / scale,
+                    octaves=octaves,
+                    persistence=persistence,
+                    lacunarity=lacunarity,
+                    repeatx=1024,
+                    repeaty=1024,
+                    base=1
+                )
+            elif noise_type == "simplex":
+                snoise2_vectorized = np.vectorize(snoise2)
+                noise_vals = snoise2_vectorized(
+                    x_coords / scale,
+                    y_coords / scale,
+                    octaves=octaves,
+                    persistence=persistence,
+                    lacunarity=lacunarity,
+                    repeatx=1024,
+                    repeaty=1024,
+                    base=1
+                )
+            elif noise_type == "value":
+                noise_vals = generate_value_noise(width, height, scale, seed=random.randint(0,10000))
+            else:
+                noise_vals = np.zeros((height, width))
 
             r, g, b = hue_color
             rgb = np.clip(np.stack([
