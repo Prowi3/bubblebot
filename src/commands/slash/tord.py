@@ -14,14 +14,14 @@ class TruthOrDare(commands.Cog):
 
     @commands.slash_command(name="tod", description="Play a round of Truth or Dare!")
     async def truth_or_dare(self, ctx):
-        embed = get_embed(ctx.author)
+        embed = get_embed(ctx.author, "Click a button to get a challenge!")
         view = TruthOrDareView()
         await ctx.respond(embed=embed, view=view)
 
-def get_embed(user):
+def get_embed(user, message: str):
     return discord.Embed(
         title="🎲 Truth or Dare",
-        description="Click a button to get a challenge!",
+        description=message,
         color=0x9FC6F6
     ).set_footer(text=f"Requested by {user.display_name}", icon_url=user.display_avatar.url)
 
@@ -37,12 +37,8 @@ class TruthOrDareView(View):
             "Make it feel social, emotional, or personal. Just the question. No explanation."
         )
         question = await fetch_prompt(prompt)
-        embed = get_embed(interaction.user)
-        await interaction.response.send_message(
-            f"**Truth:** {question}",
-            embed=embed,
-            view=TruthOrDareView()
-        )
+        embed = get_embed(interaction.user, f"**Truth:** {question}")
+        await interaction.response.send_message(embed=embed, view=TruthOrDareView())
 
     @discord.ui.button(label="Dare", style=discord.ButtonStyle.success)
     async def dare_button(self, button: Button, interaction: discord.Interaction):
@@ -52,12 +48,8 @@ class TruthOrDareView(View):
             "Avoid physical dares, absurd things, or anything inappropriate. Just the dare. No explanation."
         )
         dare = await fetch_prompt(prompt)
-        embed = get_embed(interaction.user)
-        await interaction.response.send_message(
-            f"**Dare:** {dare}",
-            embed=embed,
-            view=TruthOrDareView()
-        )
+        embed = get_embed(interaction.user, f"**Dare:** {dare}")
+        await interaction.response.send_message(embed=embed, view=TruthOrDareView())
 
 async def fetch_prompt(prompt: str) -> str:
     try:
