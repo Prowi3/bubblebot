@@ -15,42 +15,72 @@ presets = {
         "octaves": 4,
         "lacunarity": 3.0,
         "persistence": 0.7,
-        "scale": 180.0
+        "scale": 180.0,
+        "noise_type": "perlin"
     },
     "Nebula": {
         "color": (128, 0, 255),
         "octaves": 6,
         "lacunarity": 2.5,
         "persistence": 0.6,
-        "scale": 250.0
+        "scale": 250.0,
+        "noise_type": "perlin"
     },
     "Frostbite": {
         "color": (200, 240, 255),
         "octaves": 3,
         "lacunarity": 4.0,
         "persistence": 0.5,
-        "scale": 220.0
+        "scale": 220.0,
+        "noise_type": "simplex"
     },
     "Toxic": {
         "color": (80, 255, 80),
         "octaves": 2,
         "lacunarity": 5.0,
         "persistence": 0.9,
-        "scale": 150.0
+        "scale": 150.0,
+        "noise_type": "simplex"
     },
     "Crimson": {
         "color": (180, 20, 30),
         "octaves": 5,
         "lacunarity": 2.8,
         "persistence": 0.5,
-        "scale": 240.0
+        "scale": 240.0,
+        "noise_type": "perlin"
     },
     "Dream": {
         "color": (255, 200, 255),
         "octaves": 3,
         "lacunarity": 1.8,
         "persistence": 0.4,
-        "scale": 270.0
+        "scale": 270.0,
+        "noise_type": "value"
+    },
+    "Static": {
+        "color": (180, 180, 180),
+        "octaves": 1,
+        "lacunarity": 2.0,
+        "persistence": 0.3,
+        "scale": 100.0,
+        "noise_type": "value"
+    },
+    "Cosmic": {
+        "color": (50, 10, 100),
+        "octaves": 5,
+        "lacunarity": 3.5,
+        "persistence": 0.8,
+        "scale": 200.0,
+        "noise_type": "simplex"
+    },
+    "Void": {
+        "color": (10, 10, 10),
+        "octaves": 1,
+        "lacunarity": 2.0,
+        "persistence": 0.4,
+        "scale": 180.0,
+        "noise_type": "none"
     }
 }
 
@@ -87,7 +117,7 @@ def generate_value_noise(width, height, scale, seed=0):
             nxy = lerp(nx0, nx1, wy)
 
             noise[y, x] = nxy
-    return noise * 2 - 1
+    return noise * 2 - 1  # scale to -1..1
 
 class DrawNoise(commands.Cog):
     def __init__(self, bot):
@@ -124,6 +154,7 @@ class DrawNoise(commands.Cog):
                 lacunarity = preset_config["lacunarity"]
                 persistence = preset_config["persistence"]
                 scale = preset_config["scale"]
+                noise_type = preset_config.get("noise_type", noise_type)
             else:
                 hue_color = tuple(random.randint(0, 255) for _ in range(3))
                 scale = 300.0
@@ -162,7 +193,7 @@ class DrawNoise(commands.Cog):
                 )
             elif noise_type == "value":
                 noise_vals = generate_value_noise(width, height, scale, seed=random.randint(0,10000))
-            else:
+            else:  # none, solid color background
                 noise_vals = np.zeros((height, width))
 
             r, g, b = hue_color
