@@ -138,7 +138,8 @@ class DrawNoise(commands.Cog):
 
                 y_offset = (height - (font_size * line_count)) // 2
                 for line in text_lines:
-                    line_width, _ = draw.textsize(line, font=font_obj)
+                    bbox = font_obj.getbbox(line)
+                    line_width = bbox[2] - bbox[0]
                     x = (width - line_width) // 2
                     draw.text((x, y_offset), line, font=font_obj, fill=(255, 255, 255))
                     y_offset += font_size + 10
