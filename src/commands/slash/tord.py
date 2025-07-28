@@ -1,5 +1,3 @@
-def setup(bot):
-    bot.add_cog(TruthOrDare(bot))import discord
 from discord.ext import commands
 from discord.ui import View, Button
 import os
