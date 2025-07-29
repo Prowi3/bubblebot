@@ -7,200 +7,96 @@ from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageFilter, ImageOps
 from noise import pnoise2
 from io import BytesIO
 
-fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
-noise_types = ['Perlin', 'Voronoi', 'Turbulence']
-presets = ['default', 'vaporwave', 'nebula', 'lava', 'steel']
-effects_list = ['none', 'mirror', 'wave_distortion', 'swirl', 'rgb_split', 'invert', 'pixelate', 'blur', 'edge_detect']
-is_rendering = False
+fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black'] is_rendering = False
 
-def rgb_split(img, amount=5):
-    r, g, b = img.split()
-    r = ImageChops.offset(r, amount, 0)
-    b = ImageChops.offset(b, -amount, 0)
-    return Image.merge("RGB", (r, g, b))
+class DrawNoise(commands.Cog): def init(self, bot): self.bot = bot
 
-def swirl_effect(img, strength=5):
-    width, height = img.size
-    center_x, center_y = width / 2, height / 2
-    pixels = img.load()
-    result = Image.new("RGB", img.size)
-    result_pixels = result.load()
-    for y in range(height):
-        for x in range(width):
-            dx = x - center_x
-            dy = y - center_y
-            distance = math.sqrt(dx * dx + dy * dy)
-            angle = math.atan2(dy, dx) + strength * distance / max(width, height)
-            src_x = int(center_x + distance * math.cos(angle))
-            src_y = int(center_y + distance * math.sin(angle))
-            if 0 <= src_x < width and 0 <= src_y < height:
-                result_pixels[x, y] = pixels[src_x, src_y]
-            else:
-                result_pixels[x, y] = pixels[x, y]
-    return result
+@commands.slash_command(name="draw_noise", description='Draw an image using Noise')
+async def draw_noise(
+    self,
+    ctx: discord.ApplicationContext,
+    *,
+    font: discord.Option(str, description="Select a font.", choices=fonts) = "Roboto-Black",
+    text: discord.Option(str = '',  description="Enter your text here. Use '/' to split lines. emojis and emots won't work.") = None,
+    octaves: discord.Option(int, description="Choose the octave amount, the default is 1.0 (/help for more info)") = 1, 
+    lacunarity: discord.Option(float , description="Choose the lacunarity amount, the default is 5.0 (/help for more info)") = 5.0,
+    persistence: discord.Option(float , description="Choose the persistence amount, the default is to 0.5 (/help for more info)") = 0.5
+):
+    global is_rendering
+    if is_rendering:
+        await ctx.send("Sorry, an image is already being rendered.")
+        return
 
-def wave_distortion(img, amplitude=20, frequency=80):
-    width, height = img.size
-    pixels = img.load()
-    result = Image.new("RGB", img.size)
-    result_pixels = result.load()
-    for y in range(height):
-        for x in range(width):
-            offset = int(amplitude * math.sin(2 * math.pi * x / frequency))
-            src_y = y + offset
-            if 0 <= src_y < height:
-                result_pixels[x, y] = pixels[x, src_y]
-            else:
-                result_pixels[x, y] = pixels[x, y]
-    return result
+    is_rendering = True
+    try:
+        width, height = 1080, 1080
+        background = Image.new('RGB', (width, height))
+        scale = 150.0
+        hue_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        offset_x = random.uniform(0, 1000)
+        offset_y = random.uniform(0, 1000)
 
-def invert_colors(img):
-    return ImageOps.invert(img)
+        x_coords = np.arange(width) + offset_x
+        y_coords = np.arange(height) + offset_y
+        x_coords, y_coords = np.meshgrid(x_coords, y_coords)
 
-def pixelate(img, pixel_size=40):
-    small = img.resize((img.width // pixel_size, img.height // pixel_size), resample=Image.NEAREST)
-    return small.resize(img.size, Image.NEAREST)
+        pnoise2_vectorized = np.vectorize(pnoise2)
+        noise_values = pnoise2_vectorized(
+            x_coords / scale,
+            y_coords / scale,
+            octaves=octaves,
+            persistence=persistence,
+            lacunarity=lacunarity,
+            repeatx=1024,
+            repeaty=1024,
+            base=1
+        )
 
-def mirror_half(img):
-    width, height = img.size
-    left = img.crop((0, 0, width // 2, height))
-    mirrored = ImageOps.mirror(left)
-    result = Image.new("RGB", (width, height))
-    result.paste(left, (0, 0))
-    result.paste(mirrored, (width // 2, 0))
-    return result
+        r, g, b = hue_color
+        r_values = np.clip(r + noise_values * 100, 0, 255).astype(np.uint8)
+        g_values = np.clip(g + noise_values * 100, 0, 255).astype(np.uint8)
+        b_values = np.clip(b + noise_values * 100, 0, 255).astype(np.uint8)
 
-class DrawNoise(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+        rgb_values = np.stack([r_values, g_values, b_values], axis=-1)
+        noise_image = Image.fromarray(rgb_values)
 
-    @commands.slash_command(name="draw_noise", description='Draw an image using noise with effects')
-    async def draw_noise(
-        self,
-        ctx: discord.ApplicationContext,
-        *,
-        font: discord.Option(str, choices=fonts) = "Roboto-Black",
-        text: discord.Option(str = '', description="Enter your text here. Use '/' to split lines.") = None,
-        noise_type: discord.Option(str, choices=noise_types) = "Perlin",
-        preset: discord.Option(str, choices=presets) = "default",
-        effect: discord.Option(str, choices=effects_list) = "none"
-    ):
-        global is_rendering
-        if is_rendering:
-            await ctx.respond("Sorry, an image is already being rendered.")
-            return
+        if text:
+            draw = ImageDraw.Draw(noise_image)
+            font_size = int(math.sqrt(width * height) / len(text)) + 25
+            font_path = f"miscellaneous/Fonts/{font}.ttf"
+            font = ImageFont.truetype(font_path, font_size)
 
-        await ctx.defer()
-        is_rendering = True
-        try:
-            width, height = 1080, 1080
-            scale = 100.0 if noise_type == "Voronoi" else 300.0
-            offset_x = random.uniform(0, 1000)
-            offset_y = random.uniform(0, 1000)
-            OCTAVES = 1
-            PERSISTENCE = 0.5
-            LACUNARITY = 5.0
+            text_lines = text.split('/')
+            text_image = Image.new('RGB', (width, height))
+            text_draw = ImageDraw.Draw(text_image)
 
-            def perlin_noise(x, y):
-                return pnoise2(x, y, octaves=OCTAVES, persistence=PERSISTENCE, lacunarity=LACUNARITY, repeatx=1024, repeaty=1024, base=1)
+            line_bboxes = [font.getbbox(line) for line in text_lines]
+            line_heights = [bbox[3] - bbox[1] for bbox in line_bboxes]
+            total_text_height = sum(line_heights)
+            y = (height - total_text_height) // 2
 
-            def voronoi_noise(x, y):
-                cell_size = 30
-                gx = int(x // cell_size)
-                gy = int(y // cell_size)
-                min_dist = float('inf')
-                for dx in range(-1, 2):
-                    for dy in range(-1, 2):
-                        px = (gx + dx) * cell_size + random.random() * cell_size
-                        py = (gy + dy) * cell_size + random.random() * cell_size
-                        dist = (x - px) ** 2 + (y - py) ** 2
-                        min_dist = min(min_dist, dist)
-                return 1 - min_dist / (cell_size * cell_size)
+            for i, line in enumerate(text_lines):
+                bbox = font.getbbox(line)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                x = (width - text_width) // 2
+                text_draw.text((x, y - bbox[1]), line, fill=(255, 255, 255), font=font)
+                y += text_height
 
-            def turbulence_noise(x, y):
-                value = 0
-                size = 128
-                while size >= 1:
-                    value += abs(pnoise2(x / size, y / size, octaves=OCTAVES, persistence=PERSISTENCE, lacunarity=LACUNARITY, repeatx=1024, repeaty=1024, base=0)) * size
-                    size /= 2.0
-                return value / 128
+            noise_image = ImageChops.soft_light(noise_image, text_image)
 
-            base_color = (random.randint(0, 155), random.randint(0, 155), random.randint(0, 155))
-            r_base, g_base, b_base = base_color
-            arr = np.zeros((height, width, 3), dtype=np.uint8)
+        embed_color = discord.Color.from_rgb(*hue_color)
+        noise_image.save('gradient.png')
+        file = discord.File('gradient.png')
+        embed = discord.Embed(title="Here's your image.", color=embed_color)
+        embed.set_image(url="attachment://gradient.png")
+        await ctx.respond(file=file, embed=embed)
 
-            for y in range(height):
-                for x in range(width):
-                    nx = (x + offset_x) / scale
-                    ny = (y + offset_y) / scale
-                    if noise_type == "Perlin":
-                        val = np.interp(perlin_noise(nx, ny), [-1, 1], [0, 1])
-                    elif noise_type == "Voronoi":
-                        val = np.clip(voronoi_noise(x, y), 0, 1)
-                    elif noise_type == "Turbulence":
-                        val = np.interp(turbulence_noise(x + offset_x, y + offset_y), [0, 1.5], [0, 1])
-                    else:
-                        val = 0
-                    brightness = int(val * 150)
-                    arr[y, x] = [np.clip(r_base + brightness, 0, 255), np.clip(g_base + brightness, 0, 255), np.clip(b_base + brightness, 0, 255)]
+    except Exception as e:
+        await ctx.respond(f"An error occurred: {str(e)}")
 
-            image = Image.fromarray(arr)
+    finally:
+        is_rendering = False
 
-            if text:
-                font_size = int(math.sqrt(width * height) / len(text)) + 25
-                font_path = f"miscellaneous/Fonts/{font}.ttf"
-                try:
-                    font_obj = ImageFont.truetype(font_path, font_size)
-                except OSError:
-                    await ctx.respond(f"Font file `{font}.ttf` not found.")
-                    return
-                text_lines = text.split('/')
-                text_image = Image.new('RGB', (width, height), (0, 0, 0))
-                text_draw = ImageDraw.Draw(text_image)
-                line_bboxes = [font_obj.getbbox(line) for line in text_lines]
-                line_heights = [bbox[3] - bbox[1] for bbox in line_bboxes]
-                total_text_height = sum(line_heights)
-                y = (height - total_text_height) // 2
-                for line in text_lines:
-                    bbox = font_obj.getbbox(line)
-                    text_width = bbox[2] - bbox[0]
-                    x = (width - text_width) // 2
-                    text_draw.text((x, y - bbox[1]), line, fill=(255, 255, 255), font=font_obj)
-                    y += bbox[3] - bbox[1]
-                image = ImageChops.soft_light(image, text_image)
+def setup(bot): bot.add_cog(DrawNoise(bot))
 
-            if effect == "mirror":
-                image = mirror_half(image)
-            elif effect == "wave_distortion":
-                image = wave_distortion(image)
-            elif effect == "swirl":
-                image = swirl_effect(image)
-            elif effect == "rgb_split":
-                image = rgb_split(image)
-            elif effect == "invert":
-                image = ImageOps.invert(image)
-            elif effect == "pixelate":
-                image = pixelate(image)
-            elif effect == "blur":
-                image = image.filter(ImageFilter.GaussianBlur(radius=5))
-            elif effect == "edge_detect":
-                image = image.filter(ImageFilter.FIND_EDGES)
-
-            buffer = BytesIO()
-            image.save(buffer, format='PNG')
-            buffer.seek(0)
-            file = discord.File(fp=buffer, filename='gradient.png')
-            embed = discord.Embed(title="Here's your noise art with effects!", color=discord.Color.from_rgb(*base_color))
-            embed.set_image(url="attachment://gradient.png")
-            await ctx.respond(file=file, embed=embed)
-
-        except Exception as e:
-            try:
-                await ctx.respond(f"An error occurred: {str(e)}")
-            except discord.NotFound:
-                pass
-        finally:
-            is_rendering = False
-
-def setup(bot):
-    bot.add_cog(DrawNoise(bot))
