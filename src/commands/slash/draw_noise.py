@@ -15,8 +15,8 @@ is_rendering = False
 
 def rgb_split(img, amount=5):
     r, g, b = img.split()
-    r = r.offset(amount, 0)
-    b = b.offset(-amount, 0)
+    r = ImageChops.offset(r, amount, 0)
+    b = ImageChops.offset(b, -amount, 0)
     return Image.merge("RGB", (r, g, b))
 
 def swirl_effect(img, strength=5):
@@ -29,37 +29,46 @@ def swirl_effect(img, strength=5):
         for x in range(width):
             dx = x - center_x
             dy = y - center_y
-            distance = math.sqrt(dx*dx + dy*dy)
+            distance = math.sqrt(dx * dx + dy * dy)
             angle = math.atan2(dy, dx) + strength * distance / max(width, height)
             src_x = int(center_x + distance * math.cos(angle))
             src_y = int(center_y + distance * math.sin(angle))
             if 0 <= src_x < width and 0 <= src_y < height:
                 result_pixels[x, y] = pixels[src_x, src_y]
             else:
-                result_pixels[x, y] = (0, 0, 0)
+                result_pixels[x, y] = pixels[x, y]
     return result
 
-def wave_distortion(img, amplitude=10, frequency=20):
+def wave_distortion(img, amplitude=20, frequency=80):
     width, height = img.size
     pixels = img.load()
     result = Image.new("RGB", img.size)
     result_pixels = result.load()
     for y in range(height):
-        offset = int(amplitude * math.sin(2 * math.pi * y / frequency))
         for x in range(width):
-            src_x = x + offset
-            if 0 <= src_x < width:
-                result_pixels[x, y] = pixels[src_x, y]
+            offset = int(amplitude * math.sin(2 * math.pi * x / frequency))
+            src_y = y + offset
+            if 0 <= src_y < height:
+                result_pixels[x, y] = pixels[x, src_y]
             else:
-                result_pixels[x, y] = (0, 0, 0)
+                result_pixels[x, y] = pixels[x, y]
     return result
 
 def invert_colors(img):
     return ImageOps.invert(img)
 
-def pixelate(img, pixel_size=16):
+def pixelate(img, pixel_size=40):
     small = img.resize((img.width // pixel_size, img.height // pixel_size), resample=Image.NEAREST)
     return small.resize(img.size, Image.NEAREST)
+
+def mirror_half(img):
+    width, height = img.size
+    left = img.crop((0, 0, width // 2, height))
+    mirrored = ImageOps.mirror(left)
+    result = Image.new("RGB", (width, height))
+    result.paste(left, (0, 0))
+    result.paste(mirrored, (width // 2, 0))
+    return result
 
 class DrawNoise(commands.Cog):
     def __init__(self, bot):
@@ -70,11 +79,11 @@ class DrawNoise(commands.Cog):
         self,
         ctx: discord.ApplicationContext,
         *,
-        font: discord.Option(str, description="Select a font.", choices=fonts) = "Roboto-Black",
+        font: discord.Option(str, choices=fonts) = "Roboto-Black",
         text: discord.Option(str = '', description="Enter your text here. Use '/' to split lines.") = None,
-        noise_type: discord.Option(str, description="Select a noise style.", choices=noise_types) = "Perlin",
-        preset: discord.Option(str, description="Select a preset.", choices=presets) = "default",
-        effect: discord.Option(str, description="Select an effect.", choices=effects_list) = "none"
+        noise_type: discord.Option(str, choices=noise_types) = "Perlin",
+        preset: discord.Option(str, choices=presets) = "default",
+        effect: discord.Option(str, choices=effects_list) = "none"
     ):
         global is_rendering
         if is_rendering:
@@ -85,10 +94,9 @@ class DrawNoise(commands.Cog):
         is_rendering = True
         try:
             width, height = 1080, 1080
-            scale = 300.0
+            scale = 100.0 if noise_type == "Voronoi" else 300.0
             offset_x = random.uniform(0, 1000)
             offset_y = random.uniform(0, 1000)
-
             OCTAVES = 1
             PERSISTENCE = 0.5
             LACUNARITY = 5.0
@@ -97,7 +105,7 @@ class DrawNoise(commands.Cog):
                 return pnoise2(x, y, octaves=OCTAVES, persistence=PERSISTENCE, lacunarity=LACUNARITY, repeatx=1024, repeaty=1024, base=1)
 
             def voronoi_noise(x, y):
-                cell_size = 50
+                cell_size = 30
                 gx = int(x // cell_size)
                 gy = int(y // cell_size)
                 min_dist = float('inf')
@@ -119,7 +127,6 @@ class DrawNoise(commands.Cog):
 
             base_color = (random.randint(0, 155), random.randint(0, 155), random.randint(0, 155))
             r_base, g_base, b_base = base_color
-
             arr = np.zeros((height, width, 3), dtype=np.uint8)
 
             for y in range(height):
@@ -134,7 +141,7 @@ class DrawNoise(commands.Cog):
                         val = np.interp(turbulence_noise(x + offset_x, y + offset_y), [0, 1.5], [0, 1])
                     else:
                         val = 0
-                    brightness = int(val * 100)
+                    brightness = int(val * 150)
                     arr[y, x] = [np.clip(r_base + brightness, 0, 255), np.clip(g_base + brightness, 0, 255), np.clip(b_base + brightness, 0, 255)]
 
             image = Image.fromarray(arr)
@@ -148,7 +155,7 @@ class DrawNoise(commands.Cog):
                     await ctx.respond(f"Font file `{font}.ttf` not found.")
                     return
                 text_lines = text.split('/')
-                text_image = Image.new('RGB', (width, height))
+                text_image = Image.new('RGB', (width, height), (0, 0, 0))
                 text_draw = ImageDraw.Draw(text_image)
                 line_bboxes = [font_obj.getbbox(line) for line in text_lines]
                 line_heights = [bbox[3] - bbox[1] for bbox in line_bboxes]
@@ -163,7 +170,7 @@ class DrawNoise(commands.Cog):
                 image = ImageChops.soft_light(image, text_image)
 
             if effect == "mirror":
-                image = ImageOps.mirror(image)
+                image = mirror_half(image)
             elif effect == "wave_distortion":
                 image = wave_distortion(image)
             elif effect == "swirl":
