@@ -5,14 +5,12 @@ import math
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageFilter, ImageOps
 from noise import pnoise2
+from io import BytesIO
 
 fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
 noise_types = ['Perlin', 'Voronoi', 'Turbulence']
 presets = ['default', 'vaporwave', 'nebula', 'lava', 'steel']
-effects_list = [
-    'none', 'mirror', 'wave_distortion', 'swirl', 'rgb_split',
-    'invert', 'pixelate', 'blur', 'edge_detect'
-]
+effects_list = ['none', 'mirror', 'wave_distortion', 'swirl', 'rgb_split', 'invert', 'pixelate', 'blur', 'edge_detect']
 is_rendering = False
 
 def rgb_split(img, amount=5):
@@ -22,7 +20,6 @@ def rgb_split(img, amount=5):
     return Image.merge("RGB", (r, g, b))
 
 def swirl_effect(img, strength=5):
-    import math
     width, height = img.size
     center_x, center_y = width / 2, height / 2
     pixels = img.load()
@@ -39,7 +36,7 @@ def swirl_effect(img, strength=5):
             if 0 <= src_x < width and 0 <= src_y < height:
                 result_pixels[x, y] = pixels[src_x, src_y]
             else:
-                result_pixels[x, y] = (0,0,0)
+                result_pixels[x, y] = (0, 0, 0)
     return result
 
 def wave_distortion(img, amplitude=10, frequency=20):
@@ -120,59 +117,49 @@ class DrawNoise(commands.Cog):
                     size /= 2.0
                 return value / 128
 
-            if preset == "vaporwave":
-                base_color = (255, 102, 204)
-            elif preset == "nebula":
-                base_color = (100, 0, 200)
-            elif preset == "lava":
-                base_color = (255, 70, 0)
-            elif preset == "steel":
-                base_color = (120, 120, 130)
-            else:
-                base_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-
+            base_color = (random.randint(0, 155), random.randint(0, 155), random.randint(0, 155))
             r_base, g_base, b_base = base_color
-            image = Image.new('RGB', (width, height))
-            pixels = image.load()
+
+            arr = np.zeros((height, width, 3), dtype=np.uint8)
 
             for y in range(height):
                 for x in range(width):
                     nx = (x + offset_x) / scale
                     ny = (y + offset_y) / scale
                     if noise_type == "Perlin":
-                        val = perlin_noise(nx, ny)
+                        val = np.interp(perlin_noise(nx, ny), [-1, 1], [0, 1])
                     elif noise_type == "Voronoi":
-                        val = voronoi_noise(x, y)
+                        val = np.clip(voronoi_noise(x, y), 0, 1)
                     elif noise_type == "Turbulence":
-                        val = turbulence_noise(x + offset_x, y + offset_y)
+                        val = np.interp(turbulence_noise(x + offset_x, y + offset_y), [0, 1.5], [0, 1])
                     else:
                         val = 0
-                    brightness = int((val + 1) / 2 * 100)
-                    r = np.clip(r_base + brightness, 0, 255)
-                    g = np.clip(g_base + brightness, 0, 255)
-                    b = np.clip(b_base + brightness, 0, 255)
-                    pixels[x, y] = (int(r), int(g), int(b))
+                    brightness = int(val * 100)
+                    arr[y, x] = [np.clip(r_base + brightness, 0, 255), np.clip(g_base + brightness, 0, 255), np.clip(b_base + brightness, 0, 255)]
+
+            image = Image.fromarray(arr)
 
             if text:
                 font_size = int(math.sqrt(width * height) / len(text)) + 25
                 font_path = f"miscellaneous/Fonts/{font}.ttf"
-                font_obj = ImageFont.truetype(font_path, font_size)
+                try:
+                    font_obj = ImageFont.truetype(font_path, font_size)
+                except OSError:
+                    await ctx.respond(f"Font file `{font}.ttf` not found.")
+                    return
                 text_lines = text.split('/')
                 text_image = Image.new('RGB', (width, height))
                 text_draw = ImageDraw.Draw(text_image)
-
                 line_bboxes = [font_obj.getbbox(line) for line in text_lines]
                 line_heights = [bbox[3] - bbox[1] for bbox in line_bboxes]
                 total_text_height = sum(line_heights)
                 y = (height - total_text_height) // 2
-
                 for line in text_lines:
                     bbox = font_obj.getbbox(line)
                     text_width = bbox[2] - bbox[0]
                     x = (width - text_width) // 2
                     text_draw.text((x, y - bbox[1]), line, fill=(255, 255, 255), font=font_obj)
                     y += bbox[3] - bbox[1]
-
                 image = ImageChops.soft_light(image, text_image)
 
             if effect == "mirror":
@@ -192,8 +179,10 @@ class DrawNoise(commands.Cog):
             elif effect == "edge_detect":
                 image = image.filter(ImageFilter.FIND_EDGES)
 
-            image.save('gradient.png')
-            file = discord.File('gradient.png')
+            buffer = BytesIO()
+            image.save(buffer, format='PNG')
+            buffer.seek(0)
+            file = discord.File(fp=buffer, filename='gradient.png')
             embed = discord.Embed(title="Here's your noise art with effects!", color=discord.Color.from_rgb(*base_color))
             embed.set_image(url="attachment://gradient.png")
             await ctx.respond(file=file, embed=embed)
