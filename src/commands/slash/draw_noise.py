@@ -1,102 +1,77 @@
-import discord
-import numpy as np
-import random
-import math
-from discord.ext import commands
-from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageFilter, ImageOps
+import discord, numpy as np, random, math
 from noise import pnoise2
-from io import BytesIO
+from discord.ext import commands
+from PIL import Image, ImageDraw, ImageFont, ImageChops
 
-fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black'] is_rendering = False
+fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
+is_rendering = False
 
-class DrawNoise(commands.Cog): def init(self, bot): self.bot = bot
+class DrawNoise(commands.Cog):
+    def __init__(self, bot): self.bot = bot
 
-@commands.slash_command(name="draw_noise", description='Draw an image using Noise')
-async def draw_noise(
-    self,
-    ctx: discord.ApplicationContext,
-    *,
-    font: discord.Option(str, description="Select a font.", choices=fonts) = "Roboto-Black",
-    text: discord.Option(str = '',  description="Enter your text here. Use '/' to split lines. emojis and emots won't work.") = None,
-    octaves: discord.Option(int, description="Choose the octave amount, the default is 1.0 (/help for more info)") = 1, 
-    lacunarity: discord.Option(float , description="Choose the lacunarity amount, the default is 5.0 (/help for more info)") = 5.0,
-    persistence: discord.Option(float , description="Choose the persistence amount, the default is to 0.5 (/help for more info)") = 0.5
-):
-    global is_rendering
-    if is_rendering:
-        await ctx.send("Sorry, an image is already being rendered.")
-        return
+    @commands.slash_command(name="draw_noise", description='Draw an image using Noise')
+    async def draw_noise(self, ctx: discord.ApplicationContext,
+        font: discord.Option(str, description="Select a font.", choices=fonts) = "Roboto-Black",
+        text: discord.Option(str = '', description="Enter your text here. Use '/' to split lines.") = None,
+        octaves: discord.Option(int, description="Choose octave amount") = 1,
+        lacunarity: discord.Option(float, description="Choose lacunarity") = 5.0,
+        persistence: discord.Option(float, description="Choose persistence") = 0.5
+    ):
+        global is_rendering
+        if is_rendering:
+            await ctx.send("Sorry, an image is already being rendered.")
+            return
+        is_rendering = True
+        try:
+            w, h = 1080, 1080
+            base = Image.new('RGB', (w, h))
+            scale = 300.0
+            color = tuple(random.randint(0, 255) for _ in range(3))
+            ox, oy = random.uniform(0, 1000), random.uniform(0, 1000)
 
-    is_rendering = True
-    try:
-        width, height = 1080, 1080
-        background = Image.new('RGB', (width, height))
-        scale = 150.0
-        hue_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        offset_x = random.uniform(0, 1000)
-        offset_y = random.uniform(0, 1000)
+            xs = np.arange(w) + ox
+            ys = np.arange(h) + oy
+            xx, yy = np.meshgrid(xs, ys)
 
-        x_coords = np.arange(width) + offset_x
-        y_coords = np.arange(height) + offset_y
-        x_coords, y_coords = np.meshgrid(x_coords, y_coords)
+            noise = np.vectorize(pnoise2)(xx / scale, yy / scale,
+                octaves=octaves, persistence=persistence,
+                lacunarity=lacunarity, repeatx=1024, repeaty=1024, base=1)
 
-        pnoise2_vectorized = np.vectorize(pnoise2)
-        noise_values = pnoise2_vectorized(
-            x_coords / scale,
-            y_coords / scale,
-            octaves=octaves,
-            persistence=persistence,
-            lacunarity=lacunarity,
-            repeatx=1024,
-            repeaty=1024,
-            base=1
-        )
+            r = np.clip(color[0] + noise * 100, 0, 255).astype(np.uint8)
+            g = np.clip(color[1] + noise * 100, 0, 255).astype(np.uint8)
+            b = np.clip(color[2] + noise * 100, 0, 255).astype(np.uint8)
+            img = Image.fromarray(np.stack([r, g, b], -1))
 
-        r, g, b = hue_color
-        r_values = np.clip(r + noise_values * 100, 0, 255).astype(np.uint8)
-        g_values = np.clip(g + noise_values * 100, 0, 255).astype(np.uint8)
-        b_values = np.clip(b + noise_values * 100, 0, 255).astype(np.uint8)
+            if text:
+                font_size = int(math.sqrt(w * h) / len(text)) + 25
+                font_path = f"miscellaneous/Fonts/{font}.ttf"
+                fnt = ImageFont.truetype(font_path, font_size)
+                txt = Image.new('RGB', (w, h))
+                tdraw = ImageDraw.Draw(txt)
+                lines = text.split('/')
+                bboxes = [fnt.getbbox(l) for l in lines]
+                heights = [b[3] - b[1] for b in bboxes]
+                ty = (h - sum(heights)) // 2
+                for i, line in enumerate(lines):
+                    bbox = fnt.getbbox(line)
+                    tw = bbox[2] - bbox[0]
+                    th = bbox[3] - bbox[1]
+                    tx = (w - tw) // 2
+                    tdraw.text((tx, ty - bbox[1]), line, fill=(255, 255, 255), font=fnt)
+                    ty += th
+                img = ImageChops.soft_light(img, txt)
 
-        rgb_values = np.stack([r_values, g_values, b_values], axis=-1)
-        noise_image = Image.fromarray(rgb_values)
+            embed_color = discord.Color.from_rgb(*color)
+            img.save('gradient.png')
+            file = discord.File('gradient.png')
+            embed = discord.Embed(title="Here's your image.", color=embed_color)
+            embed.set_image(url="attachment://gradient.png")
+            await ctx.respond(file=file, embed=embed)
 
-        if text:
-            draw = ImageDraw.Draw(noise_image)
-            font_size = int(math.sqrt(width * height) / len(text)) + 25
-            font_path = f"miscellaneous/Fonts/{font}.ttf"
-            font = ImageFont.truetype(font_path, font_size)
+        except Exception as e:
+            await ctx.respond(f"An error occurred: {str(e)}")
 
-            text_lines = text.split('/')
-            text_image = Image.new('RGB', (width, height))
-            text_draw = ImageDraw.Draw(text_image)
-
-            line_bboxes = [font.getbbox(line) for line in text_lines]
-            line_heights = [bbox[3] - bbox[1] for bbox in line_bboxes]
-            total_text_height = sum(line_heights)
-            y = (height - total_text_height) // 2
-
-            for i, line in enumerate(text_lines):
-                bbox = font.getbbox(line)
-                text_width = bbox[2] - bbox[0]
-                text_height = bbox[3] - bbox[1]
-                x = (width - text_width) // 2
-                text_draw.text((x, y - bbox[1]), line, fill=(255, 255, 255), font=font)
-                y += text_height
-
-            noise_image = ImageChops.soft_light(noise_image, text_image)
-
-        embed_color = discord.Color.from_rgb(*hue_color)
-        noise_image.save('gradient.png')
-        file = discord.File('gradient.png')
-        embed = discord.Embed(title="Here's your image.", color=embed_color)
-        embed.set_image(url="attachment://gradient.png")
-        await ctx.respond(file=file, embed=embed)
-
-    except Exception as e:
-        await ctx.respond(f"An error occurred: {str(e)}")
-
-    finally:
-        is_rendering = False
+        finally:
+            is_rendering = False
 
 def setup(bot): bot.add_cog(DrawNoise(bot))
-
