@@ -78,7 +78,7 @@ def pixel_sort_with_structure(img, mode, invert, direction="horizontal", segment
                     order = np.argsort(-keys) if invert else np.argsort(keys)
                     row[start:end] = segment[order]
                 arr[y] = row
-    else:  # vertical
+    else:
         for x in range(w):
             col = arr[:, x, :]
             if segment_size <= 0:
