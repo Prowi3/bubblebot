@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from discord.commands import Option
-import httpx
+import aiohttp
 import re
 from io import BytesIO
 from PIL import Image
@@ -13,8 +13,6 @@ modes = [
     "luminance", "hue", "red", "green", "blue",
     "inverted_luminance", "random_noise", "edge_brightness"
 ]
-
-directions = ["horizontal", "vertical"]
 
 def _resize_keep_aspect(img: Image.Image, max_dim=MAX_DIM):
     w, h = img.size
@@ -51,69 +49,72 @@ def _compute_key_array(arr, mode):
         hue = np.zeros_like(maxc)
         mask = maxc == r
         hue[mask] = ((g[mask]-b[mask])/diff[mask]) % 6
-        mask = (maxc == g) & (~mask)
-        hue[mask] = ((b[mask]-r[mask])/diff[mask]) + 2
-        mask = (maxc == b) & (~mask)
-        hue[mask] = ((r[mask]-g[mask])/diff[mask]) + 4
+        mask2 = (maxc == g) & (~mask)
+        hue[mask2] = ((b[mask2]-r[mask2])/diff[mask2]) + 2
+        mask3 = (maxc == b) & (~mask) & (~mask2)
+        hue[mask3] = ((r[mask3]-g[mask3])/diff[mask3]) + 4
         hue = hue / 6.0
         return (hue * 255).astype(np.float32)
     return _compute_key_array(arr, "luminance")
 
-def pixel_sort_with_structure(img, mode, invert, direction="horizontal", segment_size=0):
+def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress: float):
     arr = np.array(img.convert("RGB"))
     h, w, _ = arr.shape
+    out = np.zeros_like(arr, dtype=np.float32)
+    for y in range(h):
+        row = arr[y].astype(np.float32)
+        keys = _compute_key_array(row, mode)
+        if invert:
+            order = np.argsort(-keys, kind='stable')
+        else:
+            order = np.argsort(keys, kind='stable')
+        target_pos = np.empty(w, dtype=np.float32)
+        target_pos[order] = np.arange(w, dtype=np.float32)
+        orig_pos = np.arange(w, dtype=np.float32)
+        pos = (1.0 - progress) * orig_pos + progress * target_pos
+        sort_idx = np.argsort(pos)
+        pos_sorted = pos[sort_idx]
+        pos_sorted = pos_sorted + np.arange(w, dtype=np.float32) * 1e-7
+        for c in range(3):
+            vals_sorted = row[sort_idx, c]
+            out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
-    if direction == "horizontal":
-        for y in range(h):
-            row = arr[y]
-            if segment_size <= 0:
-                keys = _compute_key_array(row, mode)
-                order = np.argsort(-keys) if invert else np.argsort(keys)
-                arr[y] = row[order]
-            else:
-                for start in range(0, w, segment_size):
-                    end = min(start + segment_size, w)
-                    segment = row[start:end]
-                    keys = _compute_key_array(segment, mode)
-                    order = np.argsort(-keys) if invert else np.argsort(keys)
-                    row[start:end] = segment[order]
-                arr[y] = row
-    else:
-        for x in range(w):
-            col = arr[:, x, :]
-            if segment_size <= 0:
-                keys = _compute_key_array(col, mode)
-                order = np.argsort(-keys) if invert else np.argsort(keys)
-                arr[:, x, :] = col[order]
-            else:
-                for start in range(0, h, segment_size):
-                    end = min(start + segment_size, h)
-                    segment = col[start:end]
-                    keys = _compute_key_array(segment, mode)
-                    order = np.argsort(-keys) if invert else np.argsort(keys)
-                    col[start:end] = segment[order]
-                arr[:, x, :] = col
-
-    return Image.fromarray(arr, "RGB")
-
-def generate_sort_frames(arr, mode, invert, direction, segment_size, steps=15):
-    frames = []
-    base_img = Image.fromarray(arr)
-    sorted_img = pixel_sort_with_structure(base_img, mode, invert, direction, segment_size)
-    sorted_arr = np.array(sorted_img)
-
-    for step in range(steps + 1):
-        t = step / steps
-        frame_arr = (arr * (1 - t) + sorted_arr * t).astype(np.uint8)
-        frames.append(Image.fromarray(frame_arr))
-
-    return frames
+async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, invert: bool,
+                                       duration_seconds: float = 5.0, frames: int = 40,
+                                       max_dim: int = 512, colors: int = 128):
+    if max(base_img.size) > max_dim:
+        base_img = _resize_keep_aspect(base_img, max_dim)
+    frame_images = []
+    for i in range(frames):
+        progress = i / (frames - 1)
+        frame = pixel_sort_frame_smooth(base_img, mode, invert, progress)
+        frame_images.append(frame)
+    paletted = [f.convert('P', palette=Image.ADAPTIVE, colors=colors) for f in frame_images]
+    buf = BytesIO()
+    duration_ms = int((duration_seconds / frames) * 1000)
+    paletted[0].save(
+        buf,
+        format='GIF',
+        save_all=True,
+        append_images=paletted[1:],
+        duration=duration_ms,
+        loop=0,
+        optimize=True,
+        disposal=2
+    )
+    buf.seek(0)
+    file = discord.File(buf, filename="pixelsort.gif")
+    embed_color = discord.Color(0x9FC6F6)
+    embed = discord.Embed(title="Here's your pixel-sort GIF.", color=embed_color)
+    embed.set_image(url="attachment://pixelsort.gif")
+    await ctx.respond(file=file, embed=embed)
 
 class PixelSortCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="pixel_sort", description="Pixel-sort an image with options.")
+    @commands.slash_command(name="pixel_sort", description="Pixel-sort an image.")
     async def pixelsort(
         self,
         ctx: discord.ApplicationContext,
@@ -122,75 +123,46 @@ class PixelSortCog(commands.Cog):
         image_url: Option(str, "Direct image URL", required=False) = None,
         mode: Option(str, "Sort key", choices=modes, required=False) = "luminance",
         invert: Option(bool, "Invert sort order", required=False) = False,
-        direction: Option(str, "Sorting direction", choices=directions, required=False) = "horizontal",
-        segment_size: Option(int, "Segment size (0 = full sort)", required=False, default=0),
-        gif: Option(bool, "Generate a GIF of the process", required=False, default=False)
+        gif: Option(bool, "Output as 5s GIF", required=False) = False
     ):
         await ctx.defer()
         image_data = None
-
-        async with httpx.AsyncClient() as client:
-            try:
-                if user:
-                    image_data = await user.avatar.read()
-                elif emote:
-                    match = re.match(r'<:(\w+):(\d+)>', emote)
-                    if match:
-                        em_id = int(match.group(2))
-                        em = discord.utils.get(ctx.guild.emojis, id=em_id)
-                        if em:
-                            resp = await client.get(str(em.url))
-                            resp.raise_for_status()
-                            image_data = resp.content
-                        else:
-                            await ctx.respond("Emote not found.")
-                            return
-                    else:
-                        await ctx.respond("Invalid emote format.")
-                        return
-                elif image_url:
-                    resp = await client.get(image_url)
-                    resp.raise_for_status()
-                    image_data = resp.content
+        async with aiohttp.ClientSession() as session:
+            if user:
+                image_data = await user.avatar.read()
+            elif emote:
+                match = re.match(r'<:(\w+):(\d+)>', emote)
+                if match:
+                    em_id = int(match.group(2))
+                    em = discord.utils.get(ctx.guild.emojis, id=em_id)
+                    if em:
+                        async with session.get(str(em.url)) as resp:
+                            image_data = await resp.read()
                 else:
-                    await ctx.respond("Please provide a user, emote, or image URL.")
+                    await ctx.respond("Invalid emote format.")
                     return
-            except Exception as e:
-                await ctx.respond(f"Failed to fetch image: {e}")
+            elif image_url:
+                async with session.get(image_url) as resp:
+                    image_data = await resp.read()
+            else:
+                await ctx.respond("Please provide a user, emote, or image URL.")
                 return
-
         try:
             base_img = _resize_keep_aspect(Image.open(BytesIO(image_data)).convert("RGB"))
-            arr = np.array(base_img)
-
             if gif:
-                frames = generate_sort_frames(arr, mode, invert, direction, segment_size)
-                buf = BytesIO()
-                frames[0].save(
-                    buf,
-                    format="GIF",
-                    save_all=True,
-                    append_images=frames[1:],
-                    duration=100,
-                    loop=0
-                )
-                buf.seek(0)
-                file = discord.File(buf, filename="pixelsort.gif")
-                embed = discord.Embed(title="Here's your pixel-sort GIF.", color=discord.Color(0x9FC6F6))
-                embed.set_image(url="attachment://pixelsort.gif")
-                await ctx.respond(file=file, embed=embed)
+                await make_pixelsort_gif_and_send(ctx, base_img, mode, invert)
             else:
-                out_img = pixel_sort_with_structure(base_img, mode, invert, direction, segment_size)
+                out_img = pixel_sort_frame_smooth(base_img, mode, invert, 1.0)
                 buf = BytesIO()
                 out_img.save(buf, format="PNG")
                 buf.seek(0)
                 file = discord.File(buf, filename="pixelsort.png")
-                embed = discord.Embed(title="Here's your pixel-sort image.", color=discord.Color(0x9FC6F6))
+                embed_color = discord.Color(0x9FC6F6)
+                embed = discord.Embed(title="Here's your image.", color=embed_color)
                 embed.set_image(url="attachment://pixelsort.png")
                 await ctx.respond(file=file, embed=embed)
-
         except Exception as e:
-            await ctx.respond(f"Error processing image: {e}")
+            await ctx.respond(f"Error: {e}")
 
-async def setup(bot):
-    await bot.add_cog(PixelSortCog(bot))
+def setup(bot):
+    bot.add_cog(PixelSortCog(bot))
