@@ -7,7 +7,7 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 import numpy as np
 
-MAX_DIM = 512  # smaller for GIF performance
+MAX_DIM = 1024
 
 modes = [
     "luminance", "hue", "red", "green", "blue",
@@ -69,9 +69,7 @@ def generate_sort_frames(arr, mode, invert, direction, segment_size, steps=10):
     h, w, _ = arr.shape
     frames = []
 
-    # Prepare all segments info to interpolate
     if direction == "horizontal":
-        # For each row, get all segments and their sorted versions
         segments = []
         for y in range(h):
             row = arr[y]
@@ -106,8 +104,7 @@ def generate_sort_frames(arr, mode, invert, direction, segment_size, steps=10):
                     row_img.append(interp_seg)
                 frame[y] = np.concatenate(row_img, axis=0)
             frames.append(frame)
-
-    else:  # vertical
+    else:
         segments = []
         for x in range(w):
             col = arr[:, x, :]
@@ -243,7 +240,7 @@ def pixel_sort_with_structure(img, mode, invert, direction="horizontal", segment
                     order = np.argsort(-keys) if invert else np.argsort(keys)
                     row[start:end] = segment[order]
                 arr[y] = row
-    else:  # vertical
+    else:
         for x in range(w):
             col = arr[:, x, :]
             if segment_size <= 0:
