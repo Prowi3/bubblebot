@@ -1,7 +1,18 @@
-import discord, numpy as np, random, math, io
-from noise import pnoise2
+import os, io, random, math
+import discord
 from discord.ext import commands
-from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+
+try:
+    from opensimplex import OpenSimplex
+    _HAS_OSIMPLEX = True
+except Exception:
+    _HAS_OSIMPLEX = False
+try:
+    from noise import pnoise2
+    _HAS_NOISE = True
+except Exception:
+    _HAS_NOISE = False
 
 FONTS = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
 FONT_DIR = "miscellaneous/Fonts"
@@ -28,86 +39,71 @@ PALETTES = {
     "neon": [(10, 255, 200), (255, 10, 200), (200, 10, 255)],
 }
 
-def blend_add(base, layer, strength=1.0):
-    return np.clip(base + layer * strength, 0, 255)
+def lerp(a, b, t):
+    return a + (b - a) * t
 
-def blend_multiply(base, layer):
-    return np.clip((base.astype(np.float32) / 255.0) * (layer.astype(np.float32) / 255.0) * 255.0, 0, 255)
+def map_to_palette_value(val, palette):
+    t = (val + 1.0) / 2.0
+    stops = len(palette) - 1
+    scaled = t * stops
+    i = int(math.floor(scaled))
+    i = max(0, min(i, stops - 1))
+    frac = scaled - i
+    c0 = palette[i]
+    c1 = palette[i + 1]
+    return (int(lerp(c0[0], c1[0], frac)),
+            int(lerp(c0[1], c1[1], frac)),
+            int(lerp(c0[2], c1[2], frac)))
 
-def blend_overlay(base, layer):
-    base_f = base.astype(np.float32) / 255.0
-    layer_f = layer.astype(np.float32) / 255.0
-    mask = base_f <= 0.5
-    out = np.empty_like(base_f)
-    out[mask] = 2 * base_f[mask] * layer_f[mask]
-    out[~mask] = 1 - 2 * (1 - base_f[~mask]) * (1 - layer_f[~mask])
-    return np.clip(out * 255.0, 0, 255)
-
-def blend_soft_light(base, layer):
-    base_f = base.astype(np.float32) / 255.0
-    layer_f = layer.astype(np.float32) / 255.0
-    out = (1 - 2 * layer_f) * (base_f ** 2) + 2 * layer_f * base_f
-    return np.clip(out * 255.0, 0, 255)
-
-BLEND_MODES = {
-    "add": blend_add,
-    "multiply": blend_multiply,
-    "overlay": blend_overlay,
-    "soft_light": blend_soft_light,
-}
-
-def generate_perlin_grid(w, h, scale, ox, oy, octaves, persistence, lacunarity, repeatx, repeaty, base_seed):
-    grid = np.empty((h, w), dtype=np.float32)
-    for y in range(h):
-        yy = (y + oy) / scale
-        for x in range(w):
-            xx = (x + ox) / scale
-            grid[y, x] = pnoise2(xx, yy, octaves=octaves, persistence=persistence, lacunarity=lacunarity,
-                                 repeatx=repeatx, repeaty=repeaty, base=base_seed)
-    return grid
-
-def generate_voronoi(w, h, cells=30, low_res_factor=0.25, seed=None):
-    if seed is not None:
-        rnd = random.Random(seed)
+def perlin_noise(x, y, scale, octaves, persistence, lacunarity, base_seed, use_simplex=None):
+    if use_simplex is None:
+        use_simplex = _HAS_OSIMPLEX and not _HAS_NOISE
+    val = 0.0
+    amplitude = 1.0
+    frequency = 1.0
+    if use_simplex:
+        if not hasattr(perlin_noise, "_osimplex_instances"):
+            perlin_noise._osimplex_instances = {}
+        key = base_seed
+        if key not in perlin_noise._osimplex_instances:
+            perlin_noise._osimplex_instances[key] = OpenSimplex(seed=base_seed)
+        s = perlin_noise._osimplex_instances[key]
+        for o in range(octaves):
+            val += s.noise2d(x * frequency / scale, y * frequency / scale) * amplitude
+            amplitude *= persistence
+            frequency *= lacunarity
     else:
-        rnd = random
-    lw = max(16, int(w * low_res_factor))
-    lh = max(16, int(h * low_res_factor))
-    pts = [(rnd.randint(0, lw - 1), rnd.randint(0, lh - 1)) for _ in range(cells)]
-    dmap = np.full((lh, lw), 1e9, dtype=np.float32)
-    xs = np.arange(lw, dtype=np.float32)
-    ys = np.arange(lh, dtype=np.float32)
-    xv, yv = np.meshgrid(xs, ys)
-    for px, py in pts:
-        dist = (xv - px) ** 2 + (yv - py) ** 2
-        dmap = np.minimum(dmap, dist)
-    dmap = np.sqrt(dmap)
-    dmap = (dmap - dmap.min()) / max(1e-9, (dmap.max() - dmap.min()))
-    dmap = 1.0 - dmap
-    img = Image.fromarray((dmap * 255).astype(np.uint8))
-    img = img.resize((w, h), Image.BICUBIC)
-    arr = np.asarray(img).astype(np.float32) / 255.0
-    return arr * 2.0 - 1.0
+        if not _HAS_NOISE:
+            raise RuntimeError("No suitable noise backend available. Install 'opensimplex' or 'noise'.")
+        for o in range(octaves):
+            val += pnoise2(x * frequency / scale, y * frequency / scale,
+                           octaves=1,
+                           persistence=persistence,
+                           lacunarity=lacunarity,
+                           repeatx=1024, repeaty=1024, base=base_seed + o) * amplitude
+            amplitude *= persistence
+            frequency *= lacunarity
+    return max(-1.0, min(1.0, val))
 
 class DrawNoise(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="draw_noise", description='Draw an image using Noise (stable).')
+    @commands.slash_command(name="draw_noise", description='Draw an image using Noise (stable low-memory).')
     async def draw_noise(self, ctx: discord.ApplicationContext,
                          pattern: discord.Option(str, choices=["fractal", "ridged", "turbulence", "marble", "radial", "voronoi"]) = "fractal",
                          palette: discord.Option(str, choices=list(PALETTES.keys())) = "sunset",
                          seed: discord.Option(int) = 0,
-                         size: discord.Option(int, choices=[512, 768, 1080]) = 1080,
-                         scale: discord.Option(float) = 300.0,
+                         size: discord.Option(int, choices=[256, 384, 512]) = 512,
+                         scale: discord.Option(float) = 200.0,
                          octaves: discord.Option(int) = 3,
                          lacunarity: discord.Option(float) = 2.0,
                          persistence: discord.Option(float) = 0.5,
                          color_strength: discord.Option(float) = 1.0,
                          layers: discord.Option(int) = 1,
-                         blend_mode: discord.Option(str, choices=list(BLEND_MODES.keys())) = "soft_light",
                          mirror: discord.Option(bool) = False,
                          symmetry: discord.Option(bool) = False,
+                         low_memory: discord.Option(bool) = True,
                          text: discord.Option(str) = None,
                          font: discord.Option(str, choices=FONTS) = "Roboto-Black",
                          outline: discord.Option(bool) = True):
@@ -118,87 +114,83 @@ class DrawNoise(commands.Cog):
         is_rendering = True
         await ctx.defer()
         try:
-            w = h = size
             if seed == 0:
                 seed = random.randint(0, 2**31 - 1)
             rnd = random.Random(seed)
+            use_simplex_env = os.getenv("USE_OPENSIMPLEX", "").lower() in ("1", "true", "yes")
+            use_simplex = (_HAS_OSIMPLEX and (use_simplex_env or not _HAS_NOISE)) or (_HAS_OSIMPLEX and _HAS_NOISE and use_simplex_env)
+            if not (_HAS_NOISE or _HAS_OSIMPLEX):
+                await ctx.respond("Install either 'noise' or 'opensimplex' in the environment.")
+                return
             palette_values = PALETTES.get(palette)
             if palette_values is None:
                 palette_values = [tuple(rnd.randint(0, 255) for _ in range(3)) for _ in range(3)]
-            def map_to_palette(noise_grid):
-                n = (noise_grid + 1.0) / 2.0
-                stops = len(palette_values) - 1
-                scaled = n * stops
-                idx = np.clip(scaled.astype(int), 0, stops - 1)
-                frac = scaled - idx
-                out = np.empty((h, w, 3), dtype=np.float32)
-                for i in range(stops):
-                    mask = (idx == i)
-                    if mask.any():
-                        c0 = np.array(palette_values[i], dtype=np.float32)
-                        c1 = np.array(palette_values[i + 1], dtype=np.float32)
-                        out[mask] = c0 + (c1 - c0) * frac[mask][:, None]
-                mask_end = (idx == stops)
-                if mask_end.any():
-                    out[mask_end] = np.array(palette_values[-1], dtype=np.float32)
-                return out
-            blend_fn = BLEND_MODES.get(blend_mode, blend_soft_light)
-            current = np.zeros((h, w, 3), dtype=np.float32)
+            w = h = max(64, min(1024, int(size)))
+            tile = 64 if low_memory else 128
+            img = Image.new("RGB", (w, h))
+            pixels = img.load()
             repeat = 1024
-            for li in range(max(1, layers)):
-                layer_scale = scale * (1.0 + (li * 0.6))
-                layer_seed = seed + li * 97
+            for ly in range(layers):
+                layer_scale = scale * (1.0 + ly * 0.6)
+                layer_seed = seed + ly * 97
                 ox = rnd.uniform(0, 10000)
                 oy = rnd.uniform(0, 10000)
-                if pattern == "fractal":
-                    grid = generate_perlin_grid(w, h, layer_scale, ox, oy, octaves, persistence, lacunarity, repeat, repeat, layer_seed)
-                elif pattern == "ridged":
-                    g = generate_perlin_grid(w, h, layer_scale, ox, oy, octaves, persistence, lacunarity, repeat, repeat, layer_seed)
-                    grid = 1.0 - np.abs(g)
-                    grid = grid * 2.0 - 1.0
-                elif pattern == "turbulence":
-                    t = np.zeros((h, w), dtype=np.float32)
-                    freq = 1.0
-                    amp = 1.0
-                    for o in range(octaves):
-                        g = generate_perlin_grid(w, h, layer_scale / freq, ox * freq, oy * freq, 1, persistence, lacunarity, repeat, repeat, layer_seed + o)
-                        t += np.abs(g) * amp
-                        amp *= persistence
-                        freq *= lacunarity
-                    t = t / t.max()
-                    grid = t * 2.0 - 1.0
-                elif pattern == "marble":
-                    g = generate_perlin_grid(w, h, layer_scale, ox, oy, octaves, persistence, lacunarity, repeat, repeat, layer_seed)
-                    xs = np.linspace(0, math.pi * 6, w)
-                    xv = np.tile(xs, (h, 1))
-                    grid = np.sin((xv / (w / 8.0)) + g * 4.0)
-                elif pattern == "radial":
-                    cx, cy = w / 2.0, h / 2.0
-                    xs = np.arange(w, dtype=np.float32) - cx
-                    ys = np.arange(h, dtype=np.float32) - cy
-                    xv, yv = np.meshgrid(xs, ys)
-                    rmap = np.sqrt(xv ** 2 + yv ** 2)
-                    rnorm = (rmap - rmap.min()) / (rmap.max() - rmap.min())
-                    g = generate_perlin_grid(w, h, layer_scale, ox, oy, octaves, persistence, lacunarity, repeat, repeat, layer_seed)
-                    grid = 1.0 - rnorm + 0.25 * g
-                    grid = (grid - grid.min()) / (grid.max() - grid.min()) * 2.0 - 1.0
-                elif pattern == "voronoi":
-                    grid = generate_voronoi(w, h, cells=40 + li * 10, low_res_factor=0.18, seed=layer_seed)
-                else:
-                    grid = generate_perlin_grid(w, h, layer_scale, ox, oy, octaves, persistence, lacunarity, repeat, repeat, layer_seed)
-                if mirror:
-                    grid = np.concatenate([grid, grid[:, ::-1]], axis=1)[:, :w]
-                if symmetry:
-                    top = grid[:h//2, :]
-                    grid = np.vstack([top, top[::-1, :]])
-                layer_rgb = map_to_palette(grid) * color_strength
-                current = blend_fn(current, layer_rgb)
-            final = np.clip(current, 0, 255).astype(np.uint8)
-            img = Image.fromarray(final, mode='RGB')
-            img = img.filter(ImageFilter.GaussianBlur(radius=0.3))
+                for ty in range(0, h, tile):
+                    for tx in range(0, w, tile):
+                        for yy in range(ty, min(h, ty + tile)):
+                            for xx in range(tx, min(w, tx + tile)):
+                                nx = xx + ox
+                                ny = yy + oy
+                                if pattern == "fractal":
+                                    v = perlin_noise(nx, ny, layer_scale, octaves, persistence, lacunarity, layer_seed, use_simplex=use_simplex)
+                                elif pattern == "ridged":
+                                    g = perlin_noise(nx, ny, layer_scale, octaves, persistence, lacunarity, layer_seed, use_simplex=use_simplex)
+                                    v = 1.0 - abs(g)
+                                    v = v * 2.0 - 1.0
+                                elif pattern == "turbulence":
+                                    t = 0.0
+                                    freq = 1.0
+                                    amp = 1.0
+                                    for o in range(octaves):
+                                        t += abs(perlin_noise(nx * freq, ny * freq, layer_scale, 1, persistence, lacunarity, layer_seed + o, use_simplex=use_simplex)) * amp
+                                        amp *= persistence
+                                        freq *= lacunarity
+                                    v = (t / max(1e-9, t)) * 2.0 - 1.0 if t != 0 else 0.0
+                                elif pattern == "marble":
+                                    g = perlin_noise(nx, ny, layer_scale, octaves, persistence, lacunarity, layer_seed, use_simplex=use_simplex)
+                                    v = math.sin((xx / max(1.0, (w / 8.0))) + g * 4.0)
+                                elif pattern == "radial":
+                                    cx, cy = w / 2.0, h / 2.0
+                                    rx = xx - cx
+                                    ry = yy - cy
+                                    rmap = math.sqrt(rx * rx + ry * ry)
+                                    rnorm = (rmap - 0) / max(1.0, (math.sqrt((cx**2)+(cy**2))))
+                                    g = perlin_noise(nx, ny, layer_scale, octaves, persistence, lacunarity, layer_seed, use_simplex=use_simplex)
+                                    v = 1.0 - rnorm + 0.25 * g
+                                    v = max(-1.0, min(1.0, (v - (-1.0)) / (2.0) * 2.0 - 1.0))
+                                else:
+                                    v = perlin_noise(nx, ny, layer_scale, octaves, persistence, lacunarity, layer_seed, use_simplex=use_simplex)
+                                col = map_to_palette_value(v, palette_values)
+                                if ly == 0:
+                                    pixels[xx, yy] = col
+                                else:
+                                    prev = pixels[xx, yy]
+                                    blended = (int((prev[0] + col[0]) * 0.5 * color_strength),
+                                               int((prev[1] + col[1]) * 0.5 * color_strength),
+                                               int((prev[2] + col[2]) * 0.5 * color_strength))
+                                    pixels[xx, yy] = blended
+            if mirror:
+                img = Image.frombytes("RGB", img.size, img.tobytes()) 
+                img = Image.merge("RGB", [Image.frombytes("L", img.size, img.getchannel(c).tobytes()).transpose(Image.FLIP_LEFT_RIGHT) for c in img.getbands()]).transpose(Image.FLIP_LEFT_RIGHT)
+            if symmetry:
+                left = img.crop((0,0,w//2,h))
+                right = left.transpose(Image.FLIP_LEFT_RIGHT)
+                img.paste(left, (0,0))
+                img.paste(right, (w - left.width, 0))
+            img = img.filter(ImageFilter.GaussianBlur(radius=0.4))
             if text:
                 lines = text.split('/')
-                font_size = max(18, int(min(w, h) / (1 + 0.5 * len("".join(lines)))))
+                font_size = max(10, int(min(w, h) / (1 + 0.4 * len("".join(lines)))))
                 fnt = load_font(font, font_size)
                 draw = ImageDraw.Draw(img)
                 while True:
@@ -208,8 +200,8 @@ class DrawNoise(commands.Cog):
                         b = fnt.getbbox(ln)
                         bbox_width = max(bbox_width, b[2] - b[0])
                         bbox_heights.append(b[3] - b[1])
-                    total_h = sum(bbox_heights) + (len(lines)-1) * 6
-                    if (bbox_width < w * 0.9 and total_h < h * 0.9) or font_size < 12:
+                    total_h = sum(bbox_heights) + (len(lines)-1) * 4
+                    if (bbox_width < w * 0.9 and total_h < h * 0.9) or font_size < 10:
                         break
                     font_size = int(font_size * 0.9)
                     fnt = load_font(font, font_size)
@@ -219,20 +211,19 @@ class DrawNoise(commands.Cog):
                     tw = b[2] - b[0]
                     tx = (w - tw) // 2
                     if outline:
-                        outline_color = (0,0,0)
-                        for dx, dy in [(-2,-2),(-2,2),(2,-2),(2,2),(-1,0),(1,0),(0,-1),(0,1)]:
-                            draw.text((tx+dx, y+dy - b[1]), ln, font=fnt, fill=outline_color)
+                        for dx, dy in [(-1,-1),(-1,1),(1,-1),(1,1)]:
+                            draw.text((tx+dx, y+dy - b[1]), ln, font=fnt, fill=(0,0,0))
                     draw.text((tx, y - b[1]), ln, font=fnt, fill=(255,255,255))
-                    y += (b[3] - b[1]) + 6
+                    y += (b[3] - b[1]) + 4
             bio = io.BytesIO()
             img.save(bio, format="PNG", optimize=True)
             bio.seek(0)
             discord_file = discord.File(fp=bio, filename="noise.png")
-            embed = discord.Embed(title="Here's your image.", color=discord.Color.from_rgb(*[int(c) for c in (palette_values[0])]))
+            embed = discord.Embed(title="Here's your image.", color=discord.Color.from_rgb(*palette_values[0]))
             embed.set_image(url="attachment://noise.png")
             await ctx.respond(file=discord_file, embed=embed)
         except Exception as e:
-            await ctx.respond(f"An error occurred: `{e}`")
+            await ctx.respond(f"Rendering error: `{e}`")
         finally:
             is_rendering = False
 

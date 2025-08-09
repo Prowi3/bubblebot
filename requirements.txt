@@ -16,3 +16,4 @@ scikit-image
 groq
 python-dotenv
 matplotlib
+opensimplex
