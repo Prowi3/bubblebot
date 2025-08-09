@@ -4,8 +4,12 @@ from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageFilter
 
 fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
-patterns = ['classic', 'swirl', 'ripple', 'concentric', 'marble']
+patterns = ['classic', 'swirl', 'ripple', 'concentric', 'marble', 'voronoi', 'turbulence', 'waves']
 is_rendering = False
+
+DEFAULT_OCTAVES = 3
+DEFAULT_LACUNARITY = 2.0
+DEFAULT_PERSISTENCE = 0.5
 
 class DrawNoise(commands.Cog):
     def __init__(self, bot): 
@@ -15,14 +19,10 @@ class DrawNoise(commands.Cog):
     async def draw_noise(self, ctx: discord.ApplicationContext,
         font: discord.Option(str, description="Select a font for text.", choices=fonts) = "Roboto-Black",
         text: discord.Option(str, description="Enter text, use '/' to split lines.", required=False) = None,
-        octaves: discord.Option(int, description="Noise detail level. Higher = more complexity.") = 1,
-        lacunarity: discord.Option(float, description="Controls frequency of detail in noise.") = 5.0,
-        persistence: discord.Option(float, description="Controls amplitude falloff of noise.") = 0.5,
         pattern: discord.Option(str, description="Choose a noise pattern style.", choices=patterns) = "classic",
         gradient: discord.Option(bool, description="Overlay a vibrant gradient.") = False,
         glow: discord.Option(bool, description="Add glowing effect to text.") = False,
-        grain: discord.Option(bool, description="Add retro film grain.") = False,
-        vignette: discord.Option(bool, description="Darken edges for depth.") = False
+        grain: discord.Option(bool, description="Add retro film grain.") = False
     ):
         global is_rendering
         if is_rendering:
@@ -31,95 +31,113 @@ class DrawNoise(commands.Cog):
         is_rendering = True
         try:
             w, h = 1080, 1080
-            base = Image.new('RGB', (w, h))
-            scale = 300.0
-            color = tuple(random.randint(0, 255) for _ in range(3))
-            ox, oy = random.uniform(0, 1000), random.uniform(0, 1000)
-
-            xs = np.arange(w) + ox
-            ys = np.arange(h) + oy
+            scale = random.uniform(180.0, 380.0)
+            color = tuple(random.randint(25, 230) for _ in range(3))
+            ox, oy = random.uniform(0, 2000), random.uniform(0, 2000)
+            xs = np.arange(w, dtype=np.float32) - (w / 2) + ox
+            ys = np.arange(h, dtype=np.float32) - (h / 2) + oy
             xx, yy = np.meshgrid(xs, ys)
-
             if pattern == "swirl":
-                angle = np.sqrt(xx**2 + yy**2) / 50
-                xx, yy = xx + np.sin(angle) * 20, yy + np.cos(angle) * 20
+                r = np.sqrt(xx**2 + yy**2) + 1e-6
+                theta = np.arctan2(yy, xx)
+                twist = 0.8 + random.uniform(0.0, 1.2)
+                theta = theta + twist * (r / max(w, h)) * 6.0
+                xx = r * np.cos(theta)
+                yy = r * np.sin(theta)
+                xx += np.sin(yy / 15.0) * 8.0
+                yy += np.cos(xx / 15.0) * 8.0
             elif pattern == "ripple":
-                xx += np.sin(yy / 20) * 10
-                yy += np.sin(xx / 20) * 10
+                xx += np.sin(yy / 12.0) * 18.0
+                yy += np.sin(xx / 18.0) * 12.0
+                xx += np.sin(xx / 40.0 + yy / 60.0) * 6.0
             elif pattern == "concentric":
-                dist = np.sqrt((xx - w/2)**2 + (yy - h/2)**2)
-                xx += np.sin(dist / 15) * 15
-                yy += np.cos(dist / 15) * 15
+                dist = np.sqrt((xx)**2 + (yy)**2)
+                xx += np.sin(dist / 12.0) * 22.0
+                yy += np.cos(dist / 12.0) * 22.0
             elif pattern == "marble":
-                xx += np.sin(xx / 30) * 40
-
-            noise = np.vectorize(pnoise2)(xx / scale, yy / scale,
-                octaves=octaves, persistence=persistence,
-                lacunarity=lacunarity, repeatx=1024, repeaty=1024, base=1)
-
-            r = np.clip(color[0] + noise * 100, 0, 255).astype(np.uint8)
-            g = np.clip(color[1] + noise * 100, 0, 255).astype(np.uint8)
-            b = np.clip(color[2] + noise * 100, 0, 255).astype(np.uint8)
-            img = Image.fromarray(np.stack([r, g, b], -1))
-
+                xx += np.sin(xx / 28.0) * 48.0
+                yy += np.sin(yy / 40.0) * 10.0
+            elif pattern == "voronoi":
+                offsets = []
+                for i in range(6):
+                    offsets.append(np.stack([xx + random.uniform(-40, 40), yy + random.uniform(-40, 40)], axis=0))
+                disp = sum(np.sin(o[0] / 30.0) + np.cos(o[1] / 30.0) for o in offsets)
+                xx += disp * 6.0
+                yy += disp * 6.0
+            elif pattern == "turbulence":
+                turb = np.zeros_like(xx)
+                amp = 1.0
+                freq = 1.0
+                for i in range(4):
+                    turb += amp * np.sin((xx * freq) / (20.0 + i * 6.0)) * np.cos((yy * freq) / (18.0 + i * 6.0))
+                    amp *= 0.5
+                    freq *= 2.0
+                xx += turb * 20.0
+                yy += (turb * 14.0)
+            elif pattern == "waves":
+                xx += np.sin(yy / 10.0 + np.sin(xx / 60.0)) * 20.0
+                yy += np.cos(xx / 14.0 + np.cos(yy / 50.0)) * 10.0
+            def perlin_grid(xarr, yarr):
+                return np.vectorize(lambda a, b: pnoise2(a, b,
+                                                        octaves=DEFAULT_OCTAVES,
+                                                        persistence=DEFAULT_PERSISTENCE,
+                                                        lacunarity=DEFAULT_LACUNARITY,
+                                                        repeatx=4096, repeaty=4096, base=0),
+                                    otypes=[float])(xarr, yarr)
+            noise = perlin_grid(xx / scale, yy / scale)
+            noise_scaled = (noise - noise.min()) / (noise.max() - noise.min() + 1e-9)
+            r = np.clip(color[0] + (noise_scaled - 0.5) * 220, 0, 255).astype(np.uint8)
+            g = np.clip(color[1] + (noise_scaled - 0.5) * 220, 0, 255).astype(np.uint8)
+            b = np.clip(color[2] + (noise_scaled - 0.5) * 220, 0, 255).astype(np.uint8)
+            img = Image.fromarray(np.dstack([r, g, b]), 'RGB')
             if gradient:
                 grad = Image.new("RGB", (w, h))
                 grad_draw = ImageDraw.Draw(grad)
                 c1 = tuple(random.randint(0, 255) for _ in range(3))
                 c2 = tuple(random.randint(0, 255) for _ in range(3))
                 for y in range(h):
-                    blend = y / h
+                    blend = y / (h - 1)
                     grad_color = tuple(int(c1[i] * (1 - blend) + c2[i] * blend) for i in range(3))
                     grad_draw.line([(0, y), (w, y)], fill=grad_color)
                 img = ImageChops.overlay(img, grad)
-
             if text:
-                font_size = int(math.sqrt(w * h) / len(text)) + 25
+                lines = text.split('/')
+                longest = max(lines, key=len)
+                font_size = max(28, int((w / max(1, len(longest))) * 0.9))
                 font_path = f"miscellaneous/Fonts/{font}.ttf"
                 fnt = ImageFont.truetype(font_path, font_size)
-                txt = Image.new('RGB', (w, h))
+                txt = Image.new('RGBA', (w, h), (0, 0, 0, 0))
                 tdraw = ImageDraw.Draw(txt)
-                lines = text.split('/')
                 bboxes = [fnt.getbbox(l) for l in lines]
                 heights = [b[3] - b[1] for b in bboxes]
-                ty = (h - sum(heights)) // 2
+                total_h = sum(heights) + (len(lines) - 1) * 10
+                ty = (h - total_h) // 2
                 for line in lines:
                     bbox = fnt.getbbox(line)
                     tw = bbox[2] - bbox[0]
                     th = bbox[3] - bbox[1]
                     tx = (w - tw) // 2
                     if glow:
-                        glow_layer = Image.new("RGB", (w, h), (0, 0, 0))
+                        glow_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
                         glow_draw = ImageDraw.Draw(glow_layer)
-                        glow_draw.text((tx, ty - bbox[1]), line, font=fnt, fill=color)
-                        for _ in range(3):
-                            glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(5))
-                        img = ImageChops.screen(img, glow_layer)
-                    tdraw.text((tx, ty - bbox[1]), line, fill=(255, 255, 255), font=fnt)
-                    ty += th
-                img = ImageChops.soft_light(img, txt)
-
+                        glow_color = tuple(min(255, int(c * 1.4)) for c in color) + (180,)
+                        glow_draw.text((tx, ty - bbox[1]), line, font=fnt, fill=glow_color)
+                        for _ in range(4):
+                            glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(6))
+                        img = Image.alpha_composite(img.convert('RGBA'), glow_layer).convert('RGB')
+                    tdraw.text((tx, ty - bbox[1]), line, fill=(255, 255, 255, 255), font=fnt)
+                    ty += th + 10
+                img = ImageChops.soft_light(img, txt.convert('RGB'))
             if grain:
-                grain_layer = np.random.randint(0, 50, (h, w, 3), dtype=np.uint8)
+                grain_layer = np.random.randint(0, 60, (h, w, 3), dtype=np.uint8)
                 img = ImageChops.add(img, Image.fromarray(grain_layer))
-
-            if vignette:
-                vignette_layer = Image.new('L', (w, h), 0)
-                grad_draw = ImageDraw.Draw(vignette_layer)
-                for i in range(max(w, h)//2, 0, -1):
-                    alpha = int(255 * (1 - i / (max(w, h)//2)))
-                    grad_draw.ellipse((w/2 - i, h/2 - i, w/2 + i, h/2 + i), fill=alpha)
-                vignette_layer = vignette_layer.filter(ImageFilter.GaussianBlur(100))
-                img.putalpha(vignette_layer)
-                img = img.convert("RGB")
-
+            filename = 'noise.png'
+            img.save(filename)
+            file = discord.File(filename)
             embed_color = discord.Color.from_rgb(*color)
-            img.save('gradient.png')
-            file = discord.File('gradient.png')
             embed = discord.Embed(title="Here's your image.", color=embed_color)
-            embed.set_image(url="attachment://gradient.png")
+            embed.set_image(url=f"attachment://{filename}")
             await ctx.respond(file=file, embed=embed)
-
         except Exception as e:
             await ctx.respond(f"An error occurred: {str(e)}")
         finally:
