@@ -261,5 +261,5 @@ def pixel_sort_with_structure(img, mode, invert, direction="horizontal", segment
 
     return Image.fromarray(arr, "RGB")
 
-async def setup(bot):
-    await bot.add_cog(PixelSortCog(bot))
+def setup(bot):
+    bot.add_cog(PixelSortCog(bot))
