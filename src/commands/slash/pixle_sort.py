@@ -151,5 +151,5 @@ class PixelSortCog(commands.Cog):
         except Exception as e:
             await ctx.respond(f"Error: {e}")
 
-def setup(bot):
-    bot.add_cog(PixelSortCog(bot))
+async def setup(bot):
+    await bot.add_cog(PixelSortCog(bot))
