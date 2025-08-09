@@ -96,6 +96,89 @@ def pixel_sort_with_structure(img, mode, invert, direction="horizontal", segment
 
     return Image.fromarray(arr, "RGB")
 
+def generate_sort_frames(arr, mode, invert, direction, segment_size, steps=15):
+    arr = arr.copy()
+    h, w, _ = arr.shape
+    frames = []
+
+    if direction == "horizontal":
+        segments = []
+        for y in range(h):
+            row = arr[y]
+            row_segments = []
+            if segment_size <= 0:
+                sorted_row = pixel_sort_with_structure(Image.fromarray(row), mode, invert, direction, 0)
+                sorted_row_arr = np.array(sorted_row)
+                row_segments.append((0, w, row, sorted_row_arr))
+            else:
+                for start in range(0, w, segment_size):
+                    end = min(start + segment_size, w)
+                    seg = row[start:end]
+                    sorted_seg = pixel_sort_with_structure(Image.fromarray(seg), mode, invert, direction, 0)
+                    sorted_seg_arr = np.array(sorted_seg)
+                    row_segments.append((start, end, seg, sorted_seg_arr))
+            segments.append(row_segments)
+
+        for step in range(steps + 1):
+            frame = np.zeros_like(arr)
+            t = step / steps
+            for y in range(h):
+                row_img = []
+                for (start, end, orig_seg, sorted_seg) in segments[y]:
+                    length = end - start
+                    interp_seg = np.zeros_like(orig_seg)
+                    for i in range(length):
+                        orig_pos = i
+                        sorted_pos = np.where((sorted_seg == orig_seg[i]).all(axis=1))[0]
+                        sorted_pos = sorted_pos[0] if len(sorted_pos) > 0 else i
+                        interp_pos = int(orig_pos * (1 - t) + sorted_pos * t)
+                        interp_pos = max(0, min(length - 1, interp_pos))
+                        interp_seg[interp_pos] = orig_seg[i]
+                    row_img.append(interp_seg)
+                frame[y] = np.concatenate(row_img, axis=0)
+            frames.append(frame)
+
+    else:
+        segments = []
+        for x in range(w):
+            col = arr[:, x, :]
+            col_segments = []
+            if segment_size <= 0:
+                sorted_col = pixel_sort_with_structure(Image.fromarray(col), mode, invert, direction, 0)
+                sorted_col_arr = np.array(sorted_col)
+                col_segments.append((0, h, col, sorted_col_arr))
+            else:
+                for start in range(0, h, segment_size):
+                    end = min(start + segment_size, h)
+                    seg = col[start:end]
+                    sorted_seg = pixel_sort_with_structure(Image.fromarray(seg), mode, invert, direction, 0)
+                    sorted_seg_arr = np.array(sorted_seg)
+                    col_segments.append((start, end, seg, sorted_seg_arr))
+            segments.append(col_segments)
+
+        for step in range(steps + 1):
+            frame = np.zeros_like(arr)
+            t = step / steps
+            for x in range(w):
+                col_img = []
+                for (start, end, orig_seg, sorted_seg) in segments[x]:
+                    length = end - start
+                    interp_seg = np.zeros_like(orig_seg)
+                    for i in range(length):
+                        orig_pos = i
+                        sorted_pos = np.where((sorted_seg == orig_seg[i]).all(axis=1))[0]
+                        sorted_pos = sorted_pos[0] if len(sorted_pos) > 0 else i
+                        interp_pos = int(orig_pos * (1 - t) + sorted_pos * t)
+                        interp_pos = max(0, min(length - 1, interp_pos))
+                        interp_seg[interp_pos] = orig_seg[i]
+                    col_img.append(interp_seg)
+                col_pixels = np.concatenate(col_img, axis=0)
+                frame[:, x, :] = col_pixels
+            frames.append(frame)
+
+    pil_frames = [Image.fromarray(frame, "RGB") for frame in frames]
+    return pil_frames
+
 class PixelSortCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -115,33 +198,61 @@ class PixelSortCog(commands.Cog):
     ):
         await ctx.defer()
         image_data = None
+
         async with httpx.AsyncClient() as client:
-            if user:
-                image_data = await user.avatar.read()
-            elif emote:
-                match = re.match(r'<:(\w+):(\d+)>', emote)
-                if match:
-                    em_id = int(match.group(2))
-                    em = discord.utils.get(ctx.guild.emojis, id=em_id)
-                    if em:
-                        resp = await client.get(str(em.url))
-                        image_data = resp.content
+            try:
+                if user:
+                    image_data = await user.avatar.read()
+                elif emote:
+                    match = re.match(r'<:(\w+):(\d+)>', emote)
+                    if match:
+                        em_id = int(match.group(2))
+                        em = discord.utils.get(ctx.guild.emojis, id=em_id)
+                        if em:
+                            resp = await client.get(str(em.url))
+                            resp.raise_for_status()
+                            image_data = resp.content
+                        else:
+                            await ctx.respond("Emote not found on this server.")
+                            return
+                    else:
+                        await ctx.respond("Invalid emote format.")
+                        return
+                elif image_url:
+                    resp = await client.get(image_url)
+                    resp.raise_for_status()
+                    image_data = resp.content
                 else:
-                    await ctx.respond("Invalid emote format.")
+                    await ctx.respond("Please provide a user, emote, or image URL.")
                     return
-            elif image_url:
-                resp = await client.get(image_url)
-                image_data = resp.content
-            else:
-                await ctx.respond("Please provide a user, emote, or image URL.")
+            except Exception as e:
+                await ctx.respond(f"Failed to fetch image: {e}")
                 return
 
         try:
             base_img = _resize_keep_aspect(Image.open(BytesIO(image_data)).convert("RGB"))
+            arr = np.array(base_img)
+
             if gif:
-                # If you want, implement generate_sort_frames here or remove gif support
-                await ctx.respond("GIF generation is not implemented yet.")
-                return
+                frames = generate_sort_frames(arr, mode, invert, direction, segment_size, steps=15)
+                buf = BytesIO()
+                frames[0].save(
+                    buf,
+                    format="GIF",
+                    save_all=True,
+                    append_images=frames[1:],
+                    duration=100,
+                    loop=0,
+                    disposal=2,
+                    optimize=False,
+                )
+                buf.seek(0)
+                file = discord.File(buf, filename="pixelsort.gif")
+                embed_color = discord.Color(0x9FC6F6)
+                embed = discord.Embed(title="Here's your pixel-sort GIF.", color=embed_color)
+                embed.set_image(url="attachment://pixelsort.gif")
+                await ctx.respond(file=file, embed=embed)
+
             else:
                 out_img = pixel_sort_with_structure(base_img, mode, invert, direction, segment_size)
                 buf = BytesIO()
@@ -154,7 +265,7 @@ class PixelSortCog(commands.Cog):
                 await ctx.respond(file=file, embed=embed)
 
         except Exception as e:
-            await ctx.respond(f"Error: {e}")
+            await ctx.respond(f"Error processing image: {e}")
 
 def setup(bot):
     bot.add_cog(PixelSortCog(bot))
