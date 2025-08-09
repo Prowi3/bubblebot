@@ -74,7 +74,7 @@ class PixelSortCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="pixe_lsort", description="Pixel-sort an image.")
+    @commands.slash_command(name="pixel_sort", description="Pixel-sort an image.")
     async def pixelsort(
         self,
         ctx: discord.ApplicationContext,
