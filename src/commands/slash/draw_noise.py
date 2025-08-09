@@ -292,7 +292,6 @@ class DrawNoise(commands.Cog):
                     tw = b[2] - b[0]
                     tx = (w - tw) // 2
                     if outline:
-                        # draw outline by drawing text multiple times
                         outline_color = (0,0,0)
                         for dx, dy in [(-2,-2),(-2,2),(2,-2),(2,2),(-1,0),(1,0),(0,-1),(0,1)]:
                             draw.text((tx+dx, y+dy - b[1]), ln, font=fnt, fill=outline_color)
