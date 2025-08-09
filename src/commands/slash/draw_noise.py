@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageFilter
 
 fonts = ['Roboto-Black', 'SpaceMono-Regular', 'SpaceMono-Bold', 'Rubik-Bold', 'Arial-Black']
 patterns = ['classic', 'swirl', 'ripple', 'concentric', 'marble', 'voronoi', 'turbulence', 'waves']
+aspect_ratios = ["1:1", "16:9", "4:3", "9:16", "21:9"]
 is_rendering = False
 
 DEFAULT_OCTAVES = 3
@@ -22,7 +23,8 @@ class DrawNoise(commands.Cog):
         pattern: discord.Option(str, description="Choose a noise pattern style.", choices=patterns) = "classic",
         gradient: discord.Option(bool, description="Overlay a vibrant gradient.") = False,
         glow: discord.Option(bool, description="Add glowing effect to text.") = False,
-        grain: discord.Option(bool, description="Add retro film grain.") = False
+        grain: discord.Option(bool, description="Add retro film grain.") = False,
+        aspect_ratio: discord.Option(str, description="Choose the aspect ratio for the image.", choices=aspect_ratios) = "1:1"
     ):
         global is_rendering
         if is_rendering:
@@ -30,13 +32,22 @@ class DrawNoise(commands.Cog):
             return
         is_rendering = True
         try:
-            w, h = 1080, 1080
+            ratio_w, ratio_h = map(int, aspect_ratio.split(":"))
+            max_size = 1080
+            if ratio_w >= ratio_h:
+                w = max_size
+                h = int(max_size * (ratio_h / ratio_w))
+            else:
+                h = max_size
+                w = int(max_size * (ratio_w / ratio_h))
+
             scale = random.uniform(180.0, 380.0)
             color = tuple(random.randint(25, 230) for _ in range(3))
             ox, oy = random.uniform(0, 2000), random.uniform(0, 2000)
             xs = np.arange(w, dtype=np.float32) - (w / 2) + ox
             ys = np.arange(h, dtype=np.float32) - (h / 2) + oy
             xx, yy = np.meshgrid(xs, ys)
+
             if pattern == "swirl":
                 r = np.sqrt(xx**2 + yy**2) + 1e-6
                 theta = np.arctan2(yy, xx)
@@ -77,6 +88,7 @@ class DrawNoise(commands.Cog):
             elif pattern == "waves":
                 xx += np.sin(yy / 10.0 + np.sin(xx / 60.0)) * 20.0
                 yy += np.cos(xx / 14.0 + np.cos(yy / 50.0)) * 10.0
+
             def perlin_grid(xarr, yarr):
                 return np.vectorize(lambda a, b: pnoise2(a, b,
                                                         octaves=DEFAULT_OCTAVES,
@@ -84,12 +96,14 @@ class DrawNoise(commands.Cog):
                                                         lacunarity=DEFAULT_LACUNARITY,
                                                         repeatx=4096, repeaty=4096, base=0),
                                     otypes=[float])(xarr, yarr)
+
             noise = perlin_grid(xx / scale, yy / scale)
             noise_scaled = (noise - noise.min()) / (noise.max() - noise.min() + 1e-9)
             r = np.clip(color[0] + (noise_scaled - 0.5) * 220, 0, 255).astype(np.uint8)
             g = np.clip(color[1] + (noise_scaled - 0.5) * 220, 0, 255).astype(np.uint8)
             b = np.clip(color[2] + (noise_scaled - 0.5) * 220, 0, 255).astype(np.uint8)
             img = Image.fromarray(np.dstack([r, g, b]), 'RGB')
+
             if gradient:
                 grad = Image.new("RGB", (w, h))
                 grad_draw = ImageDraw.Draw(grad)
@@ -100,6 +114,7 @@ class DrawNoise(commands.Cog):
                     grad_color = tuple(int(c1[i] * (1 - blend) + c2[i] * blend) for i in range(3))
                     grad_draw.line([(0, y), (w, y)], fill=grad_color)
                 img = ImageChops.overlay(img, grad)
+
             if text:
                 lines = text.split('/')
                 longest = max(lines, key=len)
@@ -128,9 +143,11 @@ class DrawNoise(commands.Cog):
                     tdraw.text((tx, ty - bbox[1]), line, fill=(255, 255, 255, 255), font=fnt)
                     ty += th + 10
                 img = ImageChops.soft_light(img, txt.convert('RGB'))
+
             if grain:
                 grain_layer = np.random.randint(0, 60, (h, w, 3), dtype=np.uint8)
                 img = ImageChops.add(img, Image.fromarray(grain_layer))
+
             filename = 'noise.png'
             img.save(filename)
             file = discord.File(filename)
@@ -138,6 +155,7 @@ class DrawNoise(commands.Cog):
             embed = discord.Embed(title="Here's your image.", color=embed_color)
             embed.set_image(url=f"attachment://{filename}")
             await ctx.respond(file=file, embed=embed)
+
         except Exception as e:
             await ctx.respond(f"An error occurred: {str(e)}")
         finally:
