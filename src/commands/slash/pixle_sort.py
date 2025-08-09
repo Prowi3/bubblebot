@@ -49,10 +49,10 @@ def _compute_key_array(arr, mode):
         hue = np.zeros_like(maxc)
         mask = maxc == r
         hue[mask] = ((g[mask]-b[mask])/diff[mask]) % 6
-        mask = (maxc == g) & (~mask)
-        hue[mask] = ((b[mask]-r[mask])/diff[mask]) + 2
-        mask = (maxc == b) & (~mask)
-        hue[mask] = ((r[mask]-g[mask])/diff[mask]) + 4
+        mask2 = (maxc == g) & (~mask)
+        hue[mask2] = ((b[mask2]-r[mask2])/diff[mask2]) + 2
+        mask3 = (maxc == b) & (~mask) & (~mask2)
+        hue[mask3] = ((r[mask3]-g[mask3])/diff[mask3]) + 4
         hue = hue / 6.0
         return (hue * 255).astype(np.float32)
     return _compute_key_array(arr, "luminance")
@@ -60,36 +60,37 @@ def _compute_key_array(arr, mode):
 def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress: float):
     arr = np.array(img.convert("RGB"))
     h, w, _ = arr.shape
-    out = np.zeros_like(arr)
+    out = np.zeros_like(arr, dtype=np.float32)
     for y in range(h):
         row = arr[y].astype(np.float32)
         keys = _compute_key_array(row, mode)
         if invert:
-            sorted_row = row[np.argsort(-keys, kind='stable')]
+            order = np.argsort(-keys, kind='stable')
         else:
-            sorted_row = row[np.argsort(keys, kind='stable')]
-        orig_positions = np.arange(w, dtype=np.float32)
-        target_positions = np.linspace(0, w - 1, w, dtype=np.float32)
-        interp_positions = (1 - progress) * orig_positions + progress * target_positions
+            order = np.argsort(keys, kind='stable')
+        target_pos = np.empty(w, dtype=np.float32)
+        target_pos[order] = np.arange(w, dtype=np.float32)
+        orig_pos = np.arange(w, dtype=np.float32)
+        pos = (1.0 - progress) * orig_pos + progress * target_pos
+        sort_idx = np.argsort(pos)
+        pos_sorted = pos[sort_idx]
+        pos_sorted = pos_sorted + np.arange(w, dtype=np.float32) * 1e-7
         for c in range(3):
-            out[y, :, c] = np.interp(
-                np.arange(w, dtype=np.float32),
-                interp_positions,
-                sorted_row[:, c]
-            )
+            vals_sorted = row[sort_idx, c]
+            out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
     return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
 async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, invert: bool,
-                                       duration_seconds: float = 5.0, frames: int = 25,
-                                       max_dim: int = 512):
+                                       duration_seconds: float = 5.0, frames: int = 40,
+                                       max_dim: int = 512, colors: int = 128):
     if max(base_img.size) > max_dim:
         base_img = _resize_keep_aspect(base_img, max_dim)
     frame_images = []
     for i in range(frames):
-        p = i / (frames - 1)
-        frame = pixel_sort_frame_smooth(base_img, mode, invert, p)
+        progress = i / (frames - 1)
+        frame = pixel_sort_frame_smooth(base_img, mode, invert, progress)
         frame_images.append(frame)
-    paletted = [f.convert('P', palette=Image.ADAPTIVE, colors=256) for f in frame_images]
+    paletted = [f.convert('P', palette=Image.ADAPTIVE, colors=colors) for f in frame_images]
     buf = BytesIO()
     duration_ms = int((duration_seconds / frames) * 1000)
     paletted[0].save(
@@ -152,12 +153,13 @@ class PixelSortCog(commands.Cog):
                 await make_pixelsort_gif_and_send(ctx, base_img, mode, invert)
             else:
                 out_img = pixel_sort_frame_smooth(base_img, mode, invert, 1.0)
-                filename = "pixelsort.png"
-                out_img.save(filename)
-                file = discord.File(filename)
+                buf = BytesIO()
+                out_img.save(buf, format="PNG")
+                buf.seek(0)
+                file = discord.File(buf, filename="pixelsort.png")
                 embed_color = discord.Color(0x9FC6F6)
                 embed = discord.Embed(title="Here's your image.", color=embed_color)
-                embed.set_image(url=f"attachment://{filename}")
+                embed.set_image(url="attachment://pixelsort.png")
                 await ctx.respond(file=file, embed=embed)
         except Exception as e:
             await ctx.respond(f"Error: {e}")
