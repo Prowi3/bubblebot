@@ -57,18 +57,57 @@ def _compute_key_array(arr, mode):
         return (hue * 255).astype(np.float32)
     return _compute_key_array(arr, "luminance")
 
-def pixel_sort_frame(img, mode, invert):
+def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress: float):
     arr = np.array(img.convert("RGB"))
     h, w, _ = arr.shape
+    out = np.zeros_like(arr)
     for y in range(h):
-        row = arr[y]
+        row = arr[y].astype(np.float32)
         keys = _compute_key_array(row, mode)
         if invert:
-            order = np.argsort(-keys)
+            sorted_row = row[np.argsort(-keys, kind='stable')]
         else:
-            order = np.argsort(keys)
-        arr[y] = row[order]
-    return Image.fromarray(arr, "RGB")
+            sorted_row = row[np.argsort(keys, kind='stable')]
+        orig_positions = np.arange(w, dtype=np.float32)
+        target_positions = np.linspace(0, w - 1, w, dtype=np.float32)
+        interp_positions = (1 - progress) * orig_positions + progress * target_positions
+        for c in range(3):
+            out[y, :, c] = np.interp(
+                np.arange(w, dtype=np.float32),
+                interp_positions,
+                sorted_row[:, c]
+            )
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
+
+async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, invert: bool,
+                                       duration_seconds: float = 5.0, frames: int = 25,
+                                       max_dim: int = 512):
+    if max(base_img.size) > max_dim:
+        base_img = _resize_keep_aspect(base_img, max_dim)
+    frame_images = []
+    for i in range(frames):
+        p = i / (frames - 1)
+        frame = pixel_sort_frame_smooth(base_img, mode, invert, p)
+        frame_images.append(frame)
+    paletted = [f.convert('P', palette=Image.ADAPTIVE, colors=256) for f in frame_images]
+    buf = BytesIO()
+    duration_ms = int((duration_seconds / frames) * 1000)
+    paletted[0].save(
+        buf,
+        format='GIF',
+        save_all=True,
+        append_images=paletted[1:],
+        duration=duration_ms,
+        loop=0,
+        optimize=True,
+        disposal=2
+    )
+    buf.seek(0)
+    file = discord.File(buf, filename="pixelsort.gif")
+    embed_color = discord.Color(0x9FC6F6)
+    embed = discord.Embed(title="Here's your pixel-sort GIF.", color=embed_color)
+    embed.set_image(url="attachment://pixelsort.gif")
+    await ctx.respond(file=file, embed=embed)
 
 class PixelSortCog(commands.Cog):
     def __init__(self, bot):
@@ -83,6 +122,7 @@ class PixelSortCog(commands.Cog):
         image_url: Option(str, "Direct image URL", required=False) = None,
         mode: Option(str, "Sort key", choices=modes, required=False) = "luminance",
         invert: Option(bool, "Invert sort order", required=False) = False,
+        gif: Option(bool, "Output as 5s GIF", required=False) = False
     ):
         await ctx.defer()
         image_data = None
@@ -106,20 +146,19 @@ class PixelSortCog(commands.Cog):
             else:
                 await ctx.respond("Please provide a user, emote, or image URL.")
                 return
-
         try:
             base_img = _resize_keep_aspect(Image.open(BytesIO(image_data)).convert("RGB"))
-            out_img = pixel_sort_frame(base_img, mode, invert)
-
-            filename = "pixelsort.png"
-            out_img.save(filename)
-
-            file = discord.File(filename)
-            embed_color = discord.Color(0x9FC6F6)
-            embed = discord.Embed(title="Here's your image.", color=embed_color)
-            embed.set_image(url=f"attachment://{filename}")
-
-            await ctx.respond(file=file, embed=embed)
+            if gif:
+                await make_pixelsort_gif_and_send(ctx, base_img, mode, invert)
+            else:
+                out_img = pixel_sort_frame_smooth(base_img, mode, invert, 1.0)
+                filename = "pixelsort.png"
+                out_img.save(filename)
+                file = discord.File(filename)
+                embed_color = discord.Color(0x9FC6F6)
+                embed = discord.Embed(title="Here's your image.", color=embed_color)
+                embed.set_image(url=f"attachment://{filename}")
+                await ctx.respond(file=file, embed=embed)
         except Exception as e:
             await ctx.respond(f"Error: {e}")
 
