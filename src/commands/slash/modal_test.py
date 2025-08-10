@@ -115,6 +115,7 @@ def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress:
                 for c in range(3):
                     vals_sorted = row[sort_idx, c]
                     out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
+
     else:  # vertical direction
         for x in range(w):
             col = arr[:, x].astype(np.float32)
@@ -200,7 +201,7 @@ async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, inv
     embed_color = discord.Color(0x9FC6F6)
     embed = discord.Embed(title="Here's your pixel-sort GIF.", color=embed_color)
     embed.set_image(url="attachment://pixelsort.gif")
-    await ctx.send(file=file, embed=embed)  # use send because responding was done already
+    await ctx.edit_original_response(content=None, embed=embed, file=file)
 
 class PixelSortOptionsView(discord.ui.View):
     def __init__(self, ctx, base_img):
@@ -213,20 +214,20 @@ class PixelSortOptionsView(discord.ui.View):
         self.gif = False
         self.direction = "horizontal"
 
-        self.add_item(ModeSelect(self, row=0))
-        self.add_item(StructureSelect(self, row=0))
-        self.add_item(InvertSelect(self, row=1))
-        self.add_item(GifSelect(self, row=1))
-        self.add_item(DirectionSelect(self, row=2))
-        self.add_item(RunButton(self, row=3))
+        self.add_item(ModeSelect(self))
+        self.add_item(StructureSelect(self))
+        self.add_item(InvertSelect(self))
+        self.add_item(GifSelect(self))
+        self.add_item(DirectionSelect(self))
+        self.add_item(RunButton(self))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user == self.ctx.user
 
 class ModeSelect(discord.ui.Select):
-    def __init__(self, parent_view, row=0):
+    def __init__(self, parent_view):
         options = [discord.SelectOption(label=m, value=m) for m in modes]
-        super().__init__(placeholder="Select sort mode...", options=options, min_values=1, max_values=1, row=row)
+        super().__init__(placeholder="Select sort mode...", options=options, min_values=1, max_values=1)
         self.parent_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
@@ -234,12 +235,12 @@ class ModeSelect(discord.ui.Select):
         await interaction.response.defer()
 
 class StructureSelect(discord.ui.Select):
-    def __init__(self, parent_view, row=0):
+    def __init__(self, parent_view):
         options = [
             discord.SelectOption(label="Full", value="full"),
             discord.SelectOption(label="Structured", value="structured")
         ]
-        super().__init__(placeholder="Select sorting style...", options=options, min_values=1, max_values=1, row=row)
+        super().__init__(placeholder="Select sorting style...", options=options, min_values=1, max_values=1)
         self.parent_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
@@ -247,12 +248,12 @@ class StructureSelect(discord.ui.Select):
         await interaction.response.defer()
 
 class InvertSelect(discord.ui.Select):
-    def __init__(self, parent_view, row=1):
+    def __init__(self, parent_view):
         options = [
             discord.SelectOption(label="No", value="False"),
             discord.SelectOption(label="Yes", value="True")
         ]
-        super().__init__(placeholder="Invert sort order?", options=options, min_values=1, max_values=1, row=row)
+        super().__init__(placeholder="Invert sort order?", options=options, min_values=1, max_values=1)
         self.parent_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
@@ -260,12 +261,12 @@ class InvertSelect(discord.ui.Select):
         await interaction.response.defer()
 
 class GifSelect(discord.ui.Select):
-    def __init__(self, parent_view, row=1):
+    def __init__(self, parent_view):
         options = [
             discord.SelectOption(label="No", value="False"),
             discord.SelectOption(label="Yes", value="True")
         ]
-        super().__init__(placeholder="Output as GIF?", options=options, min_values=1, max_values=1, row=row)
+        super().__init__(placeholder="Output as GIF?", options=options, min_values=1, max_values=1)
         self.parent_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
@@ -273,12 +274,12 @@ class GifSelect(discord.ui.Select):
         await interaction.response.defer()
 
 class DirectionSelect(discord.ui.Select):
-    def __init__(self, parent_view, row=2):
+    def __init__(self, parent_view):
         options = [
             discord.SelectOption(label="Horizontal", value="horizontal"),
             discord.SelectOption(label="Vertical", value="vertical")
         ]
-        super().__init__(placeholder="Select direction...", options=options, min_values=1, max_values=1, row=row)
+        super().__init__(placeholder="Select direction...", options=options, min_values=1, max_values=1)
         self.parent_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
@@ -286,12 +287,11 @@ class DirectionSelect(discord.ui.Select):
         await interaction.response.defer()
 
 class RunButton(discord.ui.Button):
-    def __init__(self, parent_view, row=3):
-        super().__init__(label="Run Pixel Sort", style=discord.ButtonStyle.primary, row=row)
+    def __init__(self, parent_view):
+        super().__init__(label="Run Pixel Sort", style=discord.ButtonStyle.primary)
         self.parent_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
-        # Edit original message to "Generating..."
         await interaction.response.edit_message(content="Generating...", embed=None, view=None)
         try:
             if self.parent_view.gif:
@@ -331,7 +331,14 @@ class PixelSortCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        pass
+        if self._synced:
+            return
+        await self.bot.wait_until_ready()
+        try:
+            await self.bot.tree.sync()
+        except Exception as e:
+            print(f"Sync failed: {e}")
+        self._synced = True
 
     @commands.slash_command(name="test", description="Pixel-sort an image with a GUI.")
     async def pixelsort(
@@ -341,8 +348,7 @@ class PixelSortCog(commands.Cog):
         emote: Option(str, "Server emote like <:name:id>", required=False) = None,
         image_url: Option(str, "Direct image URL", required=False) = None
     ):
-        await ctx.defer()  # Not ephemeral
-
+        await ctx.defer()
         image_data = None
         async with aiohttp.ClientSession() as session:
             if user:
