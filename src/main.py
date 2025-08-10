@@ -173,6 +173,8 @@ async def on_message(message):
 # Activity and ready message
 @bot.event
 async def on_ready():
+    await bot.sync_commands()
+    print("Synced commands")
     await bot.change_presence(activity=discord.Game("poker | /help"))
     channel = bot.get_channel(READY_CHANNEL_ID)
     if channel:
@@ -184,7 +186,7 @@ async def on_ready():
         await safe_send(channel, embed=embed)
     else:
         print("Channel not found.")
-
+        
 # Error handling
 @bot.event
 async def on_command_error(ctx, error):
