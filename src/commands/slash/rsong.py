@@ -38,27 +38,11 @@ class RandomSong(commands.Cog):
             "indie": "37i9dQZF1DX2Nc3B70tvx0",
             "blues": "37i9dQZF1DXd9rSDyQguIk",
         }
-        self.fallback_playlists = {
-            "classical": ["37i9dQZF1DWWEJlAGA9gs0", "37i9dQZF1DX6ziVCJnEm59"],
-            "hiphop": ["37i9dQZF1DX0XUsuxWHRQd", "37i9dQZF1DX4o1oenSJRJd"],
-            "pop": ["37i9dQZF1DXcZDD7cfEKhW", "37i9dQZF1DXbYM3nMM0oPk"],
-            "rock": ["37i9dQZF1DWXRqgorJj26U", "37i9dQZF1DX1lVhptIYRda"],
-        }
         self.max_recent = 40
         self.recent_songs = self._load_recent()
         self.bad_playlists = self._load_bad_playlists()
-        self._validate_and_prune_playlists()
         self._synced = False
-        self._maybe_register_autocomplete()
-
-    def _maybe_register_autocomplete(self):
-        cmd = getattr(self, "random_song", None)
-        ac = getattr(cmd, "autocomplete", None)
-        if callable(ac):
-            try:
-                ac("artist")(self.artist_autocomplete)
-            except Exception:
-                pass
+        self.random_song.autocomplete("artist")(self.artist_autocomplete)
 
     def _load_recent(self):
         try:
@@ -114,83 +98,6 @@ class RandomSong(commands.Cog):
             self.recent_songs = self.recent_songs[-self.max_recent :]
         self._save_recent()
 
-    def _is_playlist_id(self, value: str) -> bool:
-        if not isinstance(value, str):
-            return False
-        if " " in value:
-            return False
-        if len(value) < 10:
-            return False
-        return True
-
-    def _validate_and_prune_playlists(self):
-        to_remove = []
-        for key, source in list(self.categories.items()):
-            if key == "top_songs":
-                continue
-            if not self._is_playlist_id(source):
-                continue
-            if source in self.bad_playlists:
-                to_remove.append((self.categories, key))
-                continue
-            try:
-                self.spotify.playlist(source)
-            except Exception:
-                self._add_bad(source)
-                to_remove.append((self.categories, key))
-        for genre, lst in list(self.fallback_playlists.items()):
-            new_list = []
-            for pid in lst:
-                if pid in self.bad_playlists:
-                    continue
-                if not self._is_playlist_id(pid):
-                    continue
-                try:
-                    self.spotify.playlist(pid)
-                    new_list.append(pid)
-                except Exception:
-                    self._add_bad(pid)
-            self.fallback_playlists[genre] = new_list
-        for container, key in to_remove:
-            container.pop(key, None)
-
-    async def _get_random_track_from_playlist(self, playlist_id: str, tries_limit: int = 12):
-        if not playlist_id or playlist_id in self.bad_playlists:
-            return None
-        try:
-            playlist = self.spotify.playlist(playlist_id)
-            total_tracks = playlist.get("tracks", {}).get("total", 0)
-        except Exception:
-            self._add_bad(playlist_id)
-            return None
-        if total_tracks <= 0:
-            return None
-        tries = 0
-        while tries < tries_limit:
-            safe_max = min(total_tracks - 1, 9999)
-            offset = random.randint(0, safe_max)
-            try:
-                items = self.spotify.playlist_items(playlist_id, limit=1, offset=offset, additional_types=("track",))
-            except Exception:
-                self._add_bad(playlist_id)
-                return None
-            if not items or not items.get("items"):
-                tries += 1
-                continue
-            item = items["items"][0].get("track") or items["items"][0]
-            if not item:
-                tries += 1
-                continue
-            track = item
-            uri = track.get("uri") or track.get("id")
-            if not uri:
-                tries += 1
-                continue
-            if uri not in self.recent_songs:
-                return track
-            tries += 1
-        return None
-
     async def _get_random_track_from_search(self, query: str, tries_limit: int = 12):
         tries = 0
         while tries < tries_limit:
@@ -242,8 +149,8 @@ class RandomSong(commands.Cog):
     @commands.slash_command(name="random_song", description="Get a random song from Spotify (by genre/category or artist).")
     async def random_song(
         self,
-        ctx,
-        category: discord.Option(str, "Choose category or genre", required=False, choices=["random", *list(["top_songs","top_of_the_week","pop","rock","hiphop","jazz","classical","electronic","country","latin","indie","blues"])]) = "random",
+        ctx: discord.ApplicationContext,
+        category: discord.Option(str, "Choose category", required=False, choices=["random", *list(["top_songs","top_of_the_week","pop","rock","hiphop","jazz","classical","electronic","country","latin","indie","blues"])], default="random"),
         artist: discord.Option(str, "Search for an artist", required=False, autocomplete=True) = None,
     ):
         await ctx.defer()
@@ -278,11 +185,11 @@ class RandomSong(commands.Cog):
             view.add_item(Button(label="Preview (30s)", url=preview_url))
         await ctx.respond(embed=embed, view=view)
 
-    async def artist_autocomplete(self, ctx: discord.AutocompleteContext, user_input: str):
-        if not user_input:
+    async def artist_autocomplete(self, interaction: discord.Interaction, current: str):
+        if not current:
             return []
         try:
-            results = self.spotify.search(q=user_input, type="artist", limit=10)
+            results = self.spotify.search(q=current, type="artist", limit=10)
             artists = results.get("artists", {}).get("items", [])
             return [
                 discord.OptionChoice(name=artist.get("name", "Unknown"), value=artist.get("name", "Unknown"))
