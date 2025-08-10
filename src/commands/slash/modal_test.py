@@ -15,6 +15,7 @@ modes = [
 ]
 
 structures = ["full", "structured"]
+directions = ["horizontal", "vertical"]
 
 def _resize_keep_aspect(img: Image.Image, max_dim=MAX_DIM):
     w, h = img.size
@@ -59,8 +60,11 @@ def _compute_key_array(arr, mode):
         return (hue * 255).astype(np.float32)
     return _compute_key_array(arr, "luminance")
 
-def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress: float, structure: str):
+def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress: float, structure: str, direction: str):
     arr = np.array(img.convert("RGB"))
+    if direction == "vertical":
+        arr = arr.transpose(1, 0, 2)
+
     h, w, _ = arr.shape
     out = np.zeros_like(arr, dtype=np.float32)
 
@@ -113,10 +117,13 @@ def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress:
                 vals_sorted = row[sort_idx, c]
                 out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
 
+    if direction == "vertical":
+        out = out.transpose(1, 0, 2)  # transpose back
+
     return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
 async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, invert: bool,
-                                       structure: str,
+                                       structure: str, direction: str,
                                        duration_seconds: float = 2.0, frames: int = 30,
                                        max_dim: int = 512, colors: int = 128):
     if max(base_img.size) > max_dim:
@@ -124,7 +131,7 @@ async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, inv
     frame_images = []
     for i in range(frames):
         progress = i / (frames - 1)
-        frame = pixel_sort_frame_smooth(base_img, mode, invert, progress, structure)
+        frame = pixel_sort_frame_smooth(base_img, mode, invert, progress, structure, direction)
         frame_images.append(frame)
 
     reversed_frames = list(reversed(frame_images[:-1]))
@@ -148,7 +155,7 @@ async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, inv
     embed_color = discord.Color(0x9FC6F6)
     embed = discord.Embed(title="Here's your pixel-sort GIF.", color=embed_color)
     embed.set_image(url="attachment://pixelsort.gif")
-    await ctx.respond(file=file, embed=embed)
+    await ctx.edit_original_response(content=None, embed=embed, file=file)
 
 class PixelSortOptionsView(discord.ui.View):
     def __init__(self, ctx, base_img):
@@ -159,24 +166,23 @@ class PixelSortOptionsView(discord.ui.View):
         self.structure = "full"
         self.invert = False
         self.gif = False
+        self.direction = "horizontal"
 
         self.add_item(ModeSelect(self))
         self.add_item(StructureSelect(self))
         self.add_item(InvertSelect(self))
         self.add_item(GifSelect(self))
+        self.add_item(DirectionSelect(self))
         self.add_item(RunButton(self))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user == self.ctx.author
+        return interaction.user == self.ctx.user
 
 class ModeSelect(discord.ui.Select):
     def __init__(self, parent_view):
-        options = [
-            discord.SelectOption(label=m, value=m) for m in modes
-        ]
+        options = [discord.SelectOption(label=m, value=m) for m in modes]
         super().__init__(placeholder="Select sort mode...", options=options, min_values=1, max_values=1)
         self.parent_view = parent_view
-
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.mode = self.values[0]
         await interaction.response.defer()
@@ -189,7 +195,6 @@ class StructureSelect(discord.ui.Select):
         ]
         super().__init__(placeholder="Select sorting style...", options=options, min_values=1, max_values=1)
         self.parent_view = parent_view
-
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.structure = self.values[0]
         await interaction.response.defer()
@@ -202,7 +207,6 @@ class InvertSelect(discord.ui.Select):
         ]
         super().__init__(placeholder="Invert sort order?", options=options, min_values=1, max_values=1)
         self.parent_view = parent_view
-
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.invert = (self.values[0] == "True")
         await interaction.response.defer()
@@ -215,18 +219,28 @@ class GifSelect(discord.ui.Select):
         ]
         super().__init__(placeholder="Output as GIF?", options=options, min_values=1, max_values=1)
         self.parent_view = parent_view
-
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.gif = (self.values[0] == "True")
+        await interaction.response.defer()
+
+class DirectionSelect(discord.ui.Select):
+    def __init__(self, parent_view):
+        options = [
+            discord.SelectOption(label="Horizontal", value="horizontal"),
+            discord.SelectOption(label="Vertical", value="vertical")
+        ]
+        super().__init__(placeholder="Select direction...", options=options, min_values=1, max_values=1)
+        self.parent_view = parent_view
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.direction = self.values[0]
         await interaction.response.defer()
 
 class RunButton(discord.ui.Button):
     def __init__(self, parent_view):
         super().__init__(label="Run Pixel Sort", style=discord.ButtonStyle.primary)
         self.parent_view = parent_view
-
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+        await interaction.response.edit_message(content="Generating...", embed=None, view=None)
         try:
             if self.parent_view.gif:
                 await make_pixelsort_gif_and_send(
@@ -234,7 +248,8 @@ class RunButton(discord.ui.Button):
                     self.parent_view.base_img,
                     self.parent_view.mode,
                     self.parent_view.invert,
-                    self.parent_view.structure
+                    self.parent_view.structure,
+                    self.parent_view.direction
                 )
             else:
                 out_img = pixel_sort_frame_smooth(
@@ -242,7 +257,8 @@ class RunButton(discord.ui.Button):
                     self.parent_view.mode,
                     self.parent_view.invert,
                     1.0,
-                    self.parent_view.structure
+                    self.parent_view.structure,
+                    self.parent_view.direction
                 )
                 buf = BytesIO()
                 out_img.save(buf, format="PNG")
@@ -251,9 +267,9 @@ class RunButton(discord.ui.Button):
                 embed_color = discord.Color(0x9FC6F6)
                 embed = discord.Embed(title="Here's your image.", color=embed_color)
                 embed.set_image(url="attachment://pixelsort.png")
-                await interaction.followup.send(file=file, embed=embed)
+                await interaction.edit_message(content=None, embed=embed, file=file, view=None)
         except Exception as e:
-            await interaction.followup.send(f"Error: {e}", ephemeral=True)
+            await interaction.edit_message(content=f"Error: {e}", embed=None, view=None)
         self.parent_view.stop()
 
 class PixelSortCog(commands.Cog):
@@ -269,7 +285,7 @@ class PixelSortCog(commands.Cog):
         await self.bot.tree.sync()
         self._synced = True
 
-    @commands.slash_command(name="modal", description="Pixel-sort an image with a GUI.")
+    @commands.slash_command(name="test", description="Pixel-sort an image with a GUI.")
     async def pixelsort(
         self,
         ctx: discord.ApplicationContext,
@@ -277,7 +293,7 @@ class PixelSortCog(commands.Cog):
         emote: Option(str, "Server emote like <:name:id>", required=False) = None,
         image_url: Option(str, "Direct image URL", required=False) = None
     ):
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
         image_data = None
         async with aiohttp.ClientSession() as session:
             if user:
@@ -291,22 +307,22 @@ class PixelSortCog(commands.Cog):
                         async with session.get(str(em.url)) as resp:
                             image_data = await resp.read()
                 else:
-                    await ctx.respond("Invalid emote format.")
+                    await ctx.respond("Invalid emote format.", ephemeral=True)
                     return
             elif image_url:
                 async with session.get(image_url) as resp:
                     image_data = await resp.read()
             else:
-                await ctx.respond("Please provide a user, emote, or image URL.")
+                await ctx.respond("Please provide a user, emote, or image URL.", ephemeral=True)
                 return
         try:
             base_img = _resize_keep_aspect(Image.open(BytesIO(image_data)).convert("RGB"))
         except Exception as e:
-            await ctx.respond(f"Failed to load image: {e}")
+            await ctx.respond(f"Failed to load image: {e}", ephemeral=True)
             return
 
         view = PixelSortOptionsView(ctx, base_img)
-        await ctx.respond("Select your pixel sort options and click **Run Pixel Sort**.", view=view)
+        await ctx.respond("Select your pixel sort options and click **Run Pixel Sort**.", view=view, ephemeral=True)
 
 def setup(bot):
     bot.add_cog(PixelSortCog(bot))
