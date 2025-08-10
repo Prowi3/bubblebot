@@ -57,38 +57,53 @@ def _compute_key_array(arr, mode):
         return (hue * 255).astype(np.float32)
     return _compute_key_array(arr, "luminance")
 
-def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress: float):
+def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress: float, direction: str = "horizontal"):
     arr = np.array(img.convert("RGB"))
     h, w, _ = arr.shape
     out = np.zeros_like(arr, dtype=np.float32)
-    for y in range(h):
-        row = arr[y].astype(np.float32)
-        keys = _compute_key_array(row, mode)
-        if invert:
-            order = np.argsort(-keys, kind='stable')
-        else:
-            order = np.argsort(keys, kind='stable')
-        target_pos = np.empty(w, dtype=np.float32)
-        target_pos[order] = np.arange(w, dtype=np.float32)
-        orig_pos = np.arange(w, dtype=np.float32)
-        pos = (1.0 - progress) * orig_pos + progress * target_pos
-        sort_idx = np.argsort(pos)
-        pos_sorted = pos[sort_idx]
-        pos_sorted = pos_sorted + np.arange(w, dtype=np.float32) * 1e-7
-        for c in range(3):
-            vals_sorted = row[sort_idx, c]
-            out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
+
+    if direction == "horizontal":
+        for y in range(h):
+            row = arr[y].astype(np.float32)
+            keys = _compute_key_array(row, mode)
+            order = np.argsort(-keys if invert else keys, kind='stable')
+            target_pos = np.empty(w, dtype=np.float32)
+            target_pos[order] = np.arange(w, dtype=np.float32)
+            orig_pos = np.arange(w, dtype=np.float32)
+            pos = (1.0 - progress) * orig_pos + progress * target_pos
+            sort_idx = np.argsort(pos)
+            pos_sorted = pos[sort_idx] + np.arange(w, dtype=np.float32) * 1e-7
+            for c in range(3):
+                vals_sorted = row[sort_idx, c]
+                out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
+
+    elif direction == "vertical":
+        for x in range(w):
+            col = arr[:, x].astype(np.float32)
+            keys = _compute_key_array(col, mode)
+            order = np.argsort(-keys if invert else keys, kind='stable')
+            target_pos = np.empty(h, dtype=np.float32)
+            target_pos[order] = np.arange(h, dtype=np.float32)
+            orig_pos = np.arange(h, dtype=np.float32)
+            pos = (1.0 - progress) * orig_pos + progress * target_pos
+            sort_idx = np.argsort(pos)
+            pos_sorted = pos[sort_idx] + np.arange(h, dtype=np.float32) * 1e-7
+            for c in range(3):
+                vals_sorted = col[sort_idx, c]
+                out[:, x, c] = np.interp(np.arange(h, dtype=np.float32), pos_sorted, vals_sorted)
+
     return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
 async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, invert: bool,
                                        duration_seconds: float = 5.0, frames: int = 40,
-                                       max_dim: int = 512, colors: int = 128):
+                                       max_dim: int = 512, colors: int = 128,
+                                       direction: str = "horizontal"):
     if max(base_img.size) > max_dim:
         base_img = _resize_keep_aspect(base_img, max_dim)
     frame_images = []
     for i in range(frames):
         progress = i / (frames - 1)
-        frame = pixel_sort_frame_smooth(base_img, mode, invert, progress)
+        frame = pixel_sort_frame_smooth(base_img, mode, invert, progress, direction)
         frame_images.append(frame)
     paletted = [f.convert('P', palette=Image.ADAPTIVE, colors=colors) for f in frame_images]
     buf = BytesIO()
@@ -123,7 +138,8 @@ class PixelSortCog(commands.Cog):
         image_url: Option(str, "Direct image URL", required=False) = None,
         mode: Option(str, "Sort key", choices=modes, required=False) = "luminance",
         invert: Option(bool, "Invert sort order", required=False) = False,
-        gif: Option(bool, "Output as 5s GIF", required=False) = False
+        gif: Option(bool, "Output as 5s GIF", required=False) = False,
+        direction: Option(str, "Sort direction", choices=["horizontal", "vertical"], required=False) = "horizontal"
     ):
         await ctx.defer()
         image_data = None
@@ -150,9 +166,9 @@ class PixelSortCog(commands.Cog):
         try:
             base_img = _resize_keep_aspect(Image.open(BytesIO(image_data)).convert("RGB"))
             if gif:
-                await make_pixelsort_gif_and_send(ctx, base_img, mode, invert)
+                await make_pixelsort_gif_and_send(ctx, base_img, mode, invert, direction=direction)
             else:
-                out_img = pixel_sort_frame_smooth(base_img, mode, invert, 1.0)
+                out_img = pixel_sort_frame_smooth(base_img, mode, invert, 1.0, direction=direction)
                 buf = BytesIO()
                 out_img.save(buf, format="PNG")
                 buf.seek(0)
