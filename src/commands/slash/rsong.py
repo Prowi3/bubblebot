@@ -201,7 +201,13 @@ class RandomSong(commands.Cog):
             tries += 1
         return None
 
-    async def _choose_track(self, category: str):
+    async def _choose_track(self, category: str, artist_id: str = None):
+        if artist_id:
+            query = f"artist:{artist_id}"
+            track = await self._get_random_track_from_search(query)
+            if track:
+                return track
+
         if category not in self.categories:
             return await self._get_random_track_from_search("year:2022")
         source = self.categories[category]
@@ -218,12 +224,43 @@ class RandomSong(commands.Cog):
         fallback_query = category.replace("_", " ")
         return await self._get_random_track_from_search(fallback_query)
 
-    @commands.slash_command(name="random_song", description="Get a random song from Spotify (by genre/category).")
-    async def random_song(self, ctx, category: discord.Option(str, "Choose category or genre", required=False, choices=["random", *list(["top_songs","top_of_the_week","pop","rock","hiphop","jazz","classical","electronic","country","latin","indie","blues"])]) = "random"):
+    @commands.slash_command(name="random_song", description="Get a random song from Spotify (by genre/category or artist).")
+    async def random_song(
+        self,
+        ctx,
+        category: discord.Option(
+            str,
+            "Choose category or genre",
+            required=False,
+            choices=["random", *list(
+                [
+                    "top_songs",
+                    "top_of_the_week",
+                    "pop",
+                    "rock",
+                    "hiphop",
+                    "jazz",
+                    "classical",
+                    "electronic",
+                    "country",
+                    "latin",
+                    "indie",
+                    "blues",
+                ]
+            )],
+        ) = "random",
+        artist: discord.Option(str, "Search for an artist", required=False, autocomplete=True) = None,
+    ):
         await ctx.defer()
         if category == "random":
             category = random.choice(list(self.categories.keys()))
-        track = await self._choose_track(category)
+        artist_id = None
+        if artist:
+            results = self.spotify.search(q=artist, type="artist", limit=5)
+            items = results.get("artists", {}).get("items", [])
+            if items:
+                artist_id = items[0].get("id")
+        track = await self._choose_track(category, artist_id)
         if not track:
             await ctx.respond("Couldn't find a new song right now — try again later.", ephemeral=True)
             return
@@ -244,13 +281,27 @@ class RandomSong(commands.Cog):
         images = album.get("images") or []
         if images:
             embed.set_thumbnail(url=images[0].get("url"))
-        embed.set_footer(text=f"Category: {category.replace('_',' ').title()}")
+        embed.set_footer(text=f"Category: {category.replace('_', ' ').title()}")
         view = View()
         view.add_item(Button(label="Open in Spotify", url=spotify_url))
         preview_url = track.get("preview_url")
         if preview_url:
             view.add_item(Button(label="Preview (30s)", url=preview_url))
         await ctx.respond(embed=embed, view=view)
+
+    @random_song.autocomplete("artist")
+    async def artist_autocomplete(self, ctx, user_input: str):
+        if not user_input:
+            return []
+        try:
+            results = self.spotify.search(q=user_input, type="artist", limit=10)
+            artists = results.get("artists", {}).get("items", [])
+            return [
+                discord.OptionChoice(name=artist.get("name", "Unknown"), value=artist.get("name", "Unknown"))
+                for artist in artists
+            ]
+        except Exception:
+            return []
 
 def setup(bot):
     bot.add_cog(RandomSong(bot))
