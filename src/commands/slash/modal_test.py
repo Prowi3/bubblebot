@@ -16,6 +16,8 @@ modes = [
 
 structures = ["full", "structured"]
 
+directions = ["horizontal", "vertical"]
+
 def _resize_keep_aspect(img: Image.Image, max_dim=MAX_DIM):
     w, h = img.size
     if max(w, h) <= max_dim:
@@ -61,101 +63,70 @@ def _compute_key_array(arr, mode):
 
 def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress: float, structure: str, direction: str):
     arr = np.array(img.convert("RGB"))
+    if direction == "vertical":
+        arr = np.rot90(arr, 1)  # rotate so we can reuse horizontal code
+
     h, w, _ = arr.shape
     out = np.zeros_like(arr, dtype=np.float32)
 
-    # Support vertical direction by sorting columns instead of rows
+    for y in range(h):
+        row = arr[y].astype(np.float32)
+        keys = _compute_key_array(row, mode)
+
+        if structure == "structured":
+            edge_mask_row = _compute_key_array(row, "edge_brightness")
+            threshold = np.percentile(edge_mask_row, 70)
+            mask = edge_mask_row >= threshold
+            indices = np.where(mask)[0]
+
+            if len(indices) > 1:
+                keys_to_sort = keys[indices]
+                if invert:
+                    order = np.argsort(-keys_to_sort, kind='stable')
+                else:
+                    order = np.argsort(keys_to_sort, kind='stable')
+
+                target_pos = np.empty(len(indices), dtype=np.float32)
+                target_pos[order] = np.arange(len(indices), dtype=np.float32)
+                orig_pos = np.arange(len(indices), dtype=np.float32)
+                pos = (1.0 - progress) * orig_pos + progress * target_pos
+                sort_idx = np.argsort(pos)
+                pos_sorted = pos[sort_idx]
+                pos_sorted = pos_sorted + np.arange(len(indices), dtype=np.float32) * 1e-7
+
+                for c in range(3):
+                    vals_sorted = row[indices[sort_idx], c]
+                    out[y, indices, c] = np.interp(np.arange(len(indices), dtype=np.float32), pos_sorted, vals_sorted)
+
+                out[y, ~mask, :] = row[~mask]
+            else:
+                out[y] = row
+        else:
+            if invert:
+                order = np.argsort(-keys, kind='stable')
+            else:
+                order = np.argsort(keys, kind='stable')
+
+            target_pos = np.empty(w, dtype=np.float32)
+            target_pos[order] = np.arange(w, dtype=np.float32)
+            orig_pos = np.arange(w, dtype=np.float32)
+            pos = (1.0 - progress) * orig_pos + progress * target_pos
+            sort_idx = np.argsort(pos)
+            pos_sorted = pos[sort_idx]
+            pos_sorted = pos_sorted + np.arange(w, dtype=np.float32) * 1e-7
+            for c in range(3):
+                vals_sorted = row[sort_idx, c]
+                out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
+
     if direction == "vertical":
-        for x in range(w):
-            col = arr[:, x].astype(np.float32)
-            keys = _compute_key_array(col, mode)
-
-            if structure == "structured":
-                edge_mask_col = _compute_key_array(col, "edge_brightness")
-                threshold = np.percentile(edge_mask_col, 70)
-                mask = edge_mask_col >= threshold
-                indices = np.where(mask)[0]
-
-                if len(indices) > 1:
-                    keys_to_sort = keys[indices]
-                    order = np.argsort(-keys_to_sort if invert else keys_to_sort, kind='stable')
-
-                    target_pos = np.empty(len(indices), dtype=np.float32)
-                    target_pos[order] = np.arange(len(indices), dtype=np.float32)
-                    orig_pos = np.arange(len(indices), dtype=np.float32)
-                    pos = (1.0 - progress) * orig_pos + progress * target_pos
-                    sort_idx = np.argsort(pos)
-                    pos_sorted = pos[sort_idx]
-                    pos_sorted = pos_sorted + np.arange(len(indices), dtype=np.float32) * 1e-7
-
-                    for c in range(3):
-                        vals_sorted = col[indices[sort_idx], c]
-                        out[indices, x, c] = np.interp(np.arange(len(indices), dtype=np.float32), pos_sorted, vals_sorted)
-
-                    out[~mask, x, :] = col[~mask]
-                else:
-                    out[:, x] = col
-            else:
-                order = np.argsort(-keys if invert else keys, kind='stable')
-                target_pos = np.empty(h, dtype=np.float32)
-                target_pos[order] = np.arange(h, dtype=np.float32)
-                orig_pos = np.arange(h, dtype=np.float32)
-                pos = (1.0 - progress) * orig_pos + progress * target_pos
-                sort_idx = np.argsort(pos)
-                pos_sorted = pos[sort_idx]
-                pos_sorted = pos_sorted + np.arange(h, dtype=np.float32) * 1e-7
-                for c in range(3):
-                    vals_sorted = col[sort_idx, c]
-                    out[:, x, c] = np.interp(np.arange(h, dtype=np.float32), pos_sorted, vals_sorted)
-    else:  # horizontal (default)
-        for y in range(h):
-            row = arr[y].astype(np.float32)
-            keys = _compute_key_array(row, mode)
-
-            if structure == "structured":
-                edge_mask_row = _compute_key_array(row, "edge_brightness")
-                threshold = np.percentile(edge_mask_row, 70)
-                mask = edge_mask_row >= threshold
-                indices = np.where(mask)[0]
-
-                if len(indices) > 1:
-                    keys_to_sort = keys[indices]
-                    order = np.argsort(-keys_to_sort if invert else keys_to_sort, kind='stable')
-
-                    target_pos = np.empty(len(indices), dtype=np.float32)
-                    target_pos[order] = np.arange(len(indices), dtype=np.float32)
-                    orig_pos = np.arange(len(indices), dtype=np.float32)
-                    pos = (1.0 - progress) * orig_pos + progress * target_pos
-                    sort_idx = np.argsort(pos)
-                    pos_sorted = pos[sort_idx]
-                    pos_sorted = pos_sorted + np.arange(len(indices), dtype=np.float32) * 1e-7
-
-                    for c in range(3):
-                        vals_sorted = row[indices[sort_idx], c]
-                        out[y, indices, c] = np.interp(np.arange(len(indices), dtype=np.float32), pos_sorted, vals_sorted)
-
-                    out[y, ~mask, :] = row[~mask]
-                else:
-                    out[y] = row
-            else:
-                order = np.argsort(-keys if invert else keys, kind='stable')
-                target_pos = np.empty(w, dtype=np.float32)
-                target_pos[order] = np.arange(w, dtype=np.float32)
-                orig_pos = np.arange(w, dtype=np.float32)
-                pos = (1.0 - progress) * orig_pos + progress * target_pos
-                sort_idx = np.argsort(pos)
-                pos_sorted = pos[sort_idx]
-                pos_sorted = pos_sorted + np.arange(w, dtype=np.float32) * 1e-7
-                for c in range(3):
-                    vals_sorted = row[sort_idx, c]
-                    out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
+        out = np.rot90(out, 3)  # rotate back
 
     return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
-async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, invert: bool,
-                                       structure: str, direction: str,
-                                       duration_seconds: float = 2.0, frames: int = 30,
-                                       max_dim: int = 512, colors: int = 128):
+async def make_pixelsort_gif_and_send(interaction, base_img: Image.Image, mode: str, invert: bool,
+                                      structure: str, direction: str,
+                                      duration_seconds: float = 2.0, frames: int = 30,
+                                      max_dim: int = 512, colors: int = 128):
     if max(base_img.size) > max_dim:
         base_img = _resize_keep_aspect(base_img, max_dim)
     frame_images = []
@@ -185,10 +156,9 @@ async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, inv
     embed_color = discord.Color(0x9FC6F6)
     embed = discord.Embed(title="Here's your pixel-sort GIF.", color=embed_color)
     embed.set_image(url="attachment://pixelsort.gif")
-    # Edit the original message to remove view & say done
-    await ctx.edit_original_response(content=None, embed=embed, attachments=[file], view=None)
+    await interaction.edit_original_response(content=None, embed=embed, attachments=[file], view=None)
 
-async def make_pixelsort_image_and_send(ctx, base_img: Image.Image, mode: str, invert: bool,
+async def make_pixelsort_image_and_send(interaction, base_img: Image.Image, mode: str, invert: bool,
                                         structure: str, direction: str,
                                         max_dim: int = 512):
     if max(base_img.size) > max_dim:
@@ -201,8 +171,7 @@ async def make_pixelsort_image_and_send(ctx, base_img: Image.Image, mode: str, i
     embed_color = discord.Color(0x9FC6F6)
     embed = discord.Embed(title="Here's your pixel-sort image.", color=embed_color)
     embed.set_image(url="attachment://pixelsort.png")
-    # Edit the original message to remove view & say done
-    await ctx.edit_original_response(content=None, embed=embed, attachments=[file], view=None)
+    await interaction.edit_original_response(content=None, embed=embed, attachments=[file], view=None)
 
 class PixelSortOptionsView(discord.ui.View):
     def __init__(self, ctx, base_img):
@@ -214,12 +183,10 @@ class PixelSortOptionsView(discord.ui.View):
         self.invert = False
         self.direction = "horizontal"
 
-        # Each select in own row (full width)
         self.add_item(ModeSelect(self, row=0))
         self.add_item(StructureSelect(self, row=1))
         self.add_item(InvertSelect(self, row=2))
         self.add_item(DirectionSelect(self, row=3))
-        # Two buttons on same row 4
         self.add_item(GenerateImageButton(self, row=4))
         self.add_item(GenerateGifButton(self, row=4))
 
@@ -228,7 +195,9 @@ class PixelSortOptionsView(discord.ui.View):
 
 class ModeSelect(discord.ui.Select):
     def __init__(self, parent_view, row=0):
-        options = [discord.SelectOption(label=m, value=m) for m in modes]
+        options = [
+            discord.SelectOption(label=m, value=m) for m in modes
+        ]
         super().__init__(placeholder="Select sort mode...", options=options, min_values=1, max_values=1, row=row)
         self.parent_view = parent_view
 
@@ -268,7 +237,7 @@ class DirectionSelect(discord.ui.Select):
             discord.SelectOption(label="Horizontal", value="horizontal"),
             discord.SelectOption(label="Vertical", value="vertical")
         ]
-        super().__init__(placeholder="Select direction...", options=options, min_values=1, max_values=1, row=row)
+        super().__init__(placeholder="Select sort direction...", options=options, min_values=1, max_values=1, row=row)
         self.parent_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
@@ -284,7 +253,7 @@ class GenerateImageButton(discord.ui.Button):
         await interaction.response.defer()
         try:
             await make_pixelsort_image_and_send(
-                self.parent_view.ctx,
+                interaction,
                 self.parent_view.base_img,
                 self.parent_view.mode,
                 self.parent_view.invert,
@@ -304,7 +273,7 @@ class GenerateGifButton(discord.ui.Button):
         await interaction.response.defer()
         try:
             await make_pixelsort_gif_and_send(
-                self.parent_view.ctx,
+                interaction,
                 self.parent_view.base_img,
                 self.parent_view.mode,
                 self.parent_view.invert,
@@ -365,7 +334,7 @@ class PixelSortCog(commands.Cog):
             return
 
         view = PixelSortOptionsView(ctx, base_img)
-        await ctx.respond("Select options and click a button below:", view=view)
+        await ctx.respond("Select your pixel sort options, then click a button to generate.", view=view)
 
 def setup(bot):
     bot.add_cog(PixelSortCog(bot))
