@@ -278,7 +278,7 @@ class RandomSong(commands.Cog):
             view.add_item(Button(label="Preview (30s)", url=preview_url))
         await ctx.respond(embed=embed, view=view)
 
-    async def artist_autocomplete(self, ctx, user_input: str):
+    async def artist_autocomplete(self, ctx: discord.AutocompleteContext, user_input: str):
         if not user_input:
             return []
         try:
