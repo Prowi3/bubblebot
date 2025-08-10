@@ -15,6 +15,7 @@ modes = [
 ]
 
 structures = ["full", "structured"]
+
 directions = ["horizontal", "vertical"]
 
 def _resize_keep_aspect(img: Image.Image, max_dim=MAX_DIM):
@@ -62,63 +63,107 @@ def _compute_key_array(arr, mode):
 
 def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress: float, structure: str, direction: str):
     arr = np.array(img.convert("RGB"))
-    if direction == "vertical":
-        arr = arr.transpose(1, 0, 2)
-
     h, w, _ = arr.shape
     out = np.zeros_like(arr, dtype=np.float32)
 
-    for y in range(h):
-        row = arr[y].astype(np.float32)
-        keys = _compute_key_array(row, mode)
+    if direction == "horizontal":
+        for y in range(h):
+            row = arr[y].astype(np.float32)
+            keys = _compute_key_array(row, mode)
 
-        if structure == "structured":
-            edge_mask_row = _compute_key_array(row, "edge_brightness")
-            threshold = np.percentile(edge_mask_row, 70)
-            mask = edge_mask_row >= threshold
-            indices = np.where(mask)[0]
+            if structure == "structured":
+                edge_mask_row = _compute_key_array(row, "edge_brightness")
+                threshold = np.percentile(edge_mask_row, 70)
+                mask = edge_mask_row >= threshold
+                indices = np.where(mask)[0]
 
-            if len(indices) > 1:
-                keys_to_sort = keys[indices]
-                if invert:
-                    order = np.argsort(-keys_to_sort, kind='stable')
+                if len(indices) > 1:
+                    keys_to_sort = keys[indices]
+                    if invert:
+                        order = np.argsort(-keys_to_sort, kind='stable')
+                    else:
+                        order = np.argsort(keys_to_sort, kind='stable')
+
+                    target_pos = np.empty(len(indices), dtype=np.float32)
+                    target_pos[order] = np.arange(len(indices), dtype=np.float32)
+                    orig_pos = np.arange(len(indices), dtype=np.float32)
+                    pos = (1.0 - progress) * orig_pos + progress * target_pos
+                    sort_idx = np.argsort(pos)
+                    pos_sorted = pos[sort_idx]
+                    pos_sorted = pos_sorted + np.arange(len(indices), dtype=np.float32) * 1e-7
+
+                    for c in range(3):
+                        vals_sorted = row[indices[sort_idx], c]
+                        out[y, indices, c] = np.interp(np.arange(len(indices), dtype=np.float32), pos_sorted, vals_sorted)
+
+                    out[y, ~mask, :] = row[~mask]
                 else:
-                    order = np.argsort(keys_to_sort, kind='stable')
+                    out[y] = row
+            else:
+                if invert:
+                    order = np.argsort(-keys, kind='stable')
+                else:
+                    order = np.argsort(keys, kind='stable')
 
-                target_pos = np.empty(len(indices), dtype=np.float32)
-                target_pos[order] = np.arange(len(indices), dtype=np.float32)
-                orig_pos = np.arange(len(indices), dtype=np.float32)
+                target_pos = np.empty(w, dtype=np.float32)
+                target_pos[order] = np.arange(w, dtype=np.float32)
+                orig_pos = np.arange(w, dtype=np.float32)
                 pos = (1.0 - progress) * orig_pos + progress * target_pos
                 sort_idx = np.argsort(pos)
                 pos_sorted = pos[sort_idx]
-                pos_sorted = pos_sorted + np.arange(len(indices), dtype=np.float32) * 1e-7
-
+                pos_sorted = pos_sorted + np.arange(w, dtype=np.float32) * 1e-7
                 for c in range(3):
-                    vals_sorted = row[indices[sort_idx], c]
-                    out[y, indices, c] = np.interp(np.arange(len(indices), dtype=np.float32), pos_sorted, vals_sorted)
+                    vals_sorted = row[sort_idx, c]
+                    out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
+    else:  # vertical direction
+        for x in range(w):
+            col = arr[:, x].astype(np.float32)
+            keys = _compute_key_array(col, mode)
 
-                out[y, ~mask, :] = row[~mask]
+            if structure == "structured":
+                edge_mask_col = _compute_key_array(col, "edge_brightness")
+                threshold = np.percentile(edge_mask_col, 70)
+                mask = edge_mask_col >= threshold
+                indices = np.where(mask)[0]
+
+                if len(indices) > 1:
+                    keys_to_sort = keys[indices]
+                    if invert:
+                        order = np.argsort(-keys_to_sort, kind='stable')
+                    else:
+                        order = np.argsort(keys_to_sort, kind='stable')
+
+                    target_pos = np.empty(len(indices), dtype=np.float32)
+                    target_pos[order] = np.arange(len(indices), dtype=np.float32)
+                    orig_pos = np.arange(len(indices), dtype=np.float32)
+                    pos = (1.0 - progress) * orig_pos + progress * target_pos
+                    sort_idx = np.argsort(pos)
+                    pos_sorted = pos[sort_idx]
+                    pos_sorted = pos_sorted + np.arange(len(indices), dtype=np.float32) * 1e-7
+
+                    for c in range(3):
+                        vals_sorted = col[indices[sort_idx], c]
+                        out[indices, x, c] = np.interp(np.arange(len(indices), dtype=np.float32), pos_sorted, vals_sorted)
+
+                    out[~mask, x, :] = col[~mask]
+                else:
+                    out[:, x] = col
             else:
-                out[y] = row
-        else:
-            if invert:
-                order = np.argsort(-keys, kind='stable')
-            else:
-                order = np.argsort(keys, kind='stable')
+                if invert:
+                    order = np.argsort(-keys, kind='stable')
+                else:
+                    order = np.argsort(keys, kind='stable')
 
-            target_pos = np.empty(w, dtype=np.float32)
-            target_pos[order] = np.arange(w, dtype=np.float32)
-            orig_pos = np.arange(w, dtype=np.float32)
-            pos = (1.0 - progress) * orig_pos + progress * target_pos
-            sort_idx = np.argsort(pos)
-            pos_sorted = pos[sort_idx]
-            pos_sorted = pos_sorted + np.arange(w, dtype=np.float32) * 1e-7
-            for c in range(3):
-                vals_sorted = row[sort_idx, c]
-                out[y, :, c] = np.interp(np.arange(w, dtype=np.float32), pos_sorted, vals_sorted)
-
-    if direction == "vertical":
-        out = out.transpose(1, 0, 2)  # transpose back
+                target_pos = np.empty(h, dtype=np.float32)
+                target_pos[order] = np.arange(h, dtype=np.float32)
+                orig_pos = np.arange(h, dtype=np.float32)
+                pos = (1.0 - progress) * orig_pos + progress * target_pos
+                sort_idx = np.argsort(pos)
+                pos_sorted = pos[sort_idx]
+                pos_sorted = pos_sorted + np.arange(h, dtype=np.float32) * 1e-7
+                for c in range(3):
+                    vals_sorted = col[sort_idx, c]
+                    out[:, x, c] = np.interp(np.arange(h, dtype=np.float32), pos_sorted, vals_sorted)
 
     return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
@@ -155,7 +200,7 @@ async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, inv
     embed_color = discord.Color(0x9FC6F6)
     embed = discord.Embed(title="Here's your pixel-sort GIF.", color=embed_color)
     embed.set_image(url="attachment://pixelsort.gif")
-    await ctx.edit_original_response(content=None, embed=embed, file=file)
+    await ctx.send(file=file, embed=embed)  # use send because responding was done already
 
 class PixelSortOptionsView(discord.ui.View):
     def __init__(self, ctx, base_img):
@@ -168,78 +213,85 @@ class PixelSortOptionsView(discord.ui.View):
         self.gif = False
         self.direction = "horizontal"
 
-        self.add_item(ModeSelect(self))
-        self.add_item(StructureSelect(self))
-        self.add_item(InvertSelect(self))
-        self.add_item(GifSelect(self))
-        self.add_item(DirectionSelect(self))
-        self.add_item(RunButton(self))
+        self.add_item(ModeSelect(self, row=0))
+        self.add_item(StructureSelect(self, row=0))
+        self.add_item(InvertSelect(self, row=1))
+        self.add_item(GifSelect(self, row=1))
+        self.add_item(DirectionSelect(self, row=2))
+        self.add_item(RunButton(self, row=3))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user == self.ctx.user
 
 class ModeSelect(discord.ui.Select):
-    def __init__(self, parent_view):
+    def __init__(self, parent_view, row=0):
         options = [discord.SelectOption(label=m, value=m) for m in modes]
-        super().__init__(placeholder="Select sort mode...", options=options, min_values=1, max_values=1)
+        super().__init__(placeholder="Select sort mode...", options=options, min_values=1, max_values=1, row=row)
         self.parent_view = parent_view
+
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.mode = self.values[0]
         await interaction.response.defer()
 
 class StructureSelect(discord.ui.Select):
-    def __init__(self, parent_view):
+    def __init__(self, parent_view, row=0):
         options = [
             discord.SelectOption(label="Full", value="full"),
             discord.SelectOption(label="Structured", value="structured")
         ]
-        super().__init__(placeholder="Select sorting style...", options=options, min_values=1, max_values=1)
+        super().__init__(placeholder="Select sorting style...", options=options, min_values=1, max_values=1, row=row)
         self.parent_view = parent_view
+
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.structure = self.values[0]
         await interaction.response.defer()
 
 class InvertSelect(discord.ui.Select):
-    def __init__(self, parent_view):
+    def __init__(self, parent_view, row=1):
         options = [
             discord.SelectOption(label="No", value="False"),
             discord.SelectOption(label="Yes", value="True")
         ]
-        super().__init__(placeholder="Invert sort order?", options=options, min_values=1, max_values=1)
+        super().__init__(placeholder="Invert sort order?", options=options, min_values=1, max_values=1, row=row)
         self.parent_view = parent_view
+
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.invert = (self.values[0] == "True")
         await interaction.response.defer()
 
 class GifSelect(discord.ui.Select):
-    def __init__(self, parent_view):
+    def __init__(self, parent_view, row=1):
         options = [
             discord.SelectOption(label="No", value="False"),
             discord.SelectOption(label="Yes", value="True")
         ]
-        super().__init__(placeholder="Output as GIF?", options=options, min_values=1, max_values=1)
+        super().__init__(placeholder="Output as GIF?", options=options, min_values=1, max_values=1, row=row)
         self.parent_view = parent_view
+
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.gif = (self.values[0] == "True")
         await interaction.response.defer()
 
 class DirectionSelect(discord.ui.Select):
-    def __init__(self, parent_view):
+    def __init__(self, parent_view, row=2):
         options = [
             discord.SelectOption(label="Horizontal", value="horizontal"),
             discord.SelectOption(label="Vertical", value="vertical")
         ]
-        super().__init__(placeholder="Select direction...", options=options, min_values=1, max_values=1)
+        super().__init__(placeholder="Select direction...", options=options, min_values=1, max_values=1, row=row)
         self.parent_view = parent_view
+
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.direction = self.values[0]
         await interaction.response.defer()
 
 class RunButton(discord.ui.Button):
-    def __init__(self, parent_view):
-        super().__init__(label="Run Pixel Sort", style=discord.ButtonStyle.primary)
+    def __init__(self, parent_view, row=3):
+        super().__init__(label="Run Pixel Sort", style=discord.ButtonStyle.primary, row=row)
         self.parent_view = parent_view
+
     async def callback(self, interaction: discord.Interaction):
+        # Edit original message to "Generating..."
         await interaction.response.edit_message(content="Generating...", embed=None, view=None)
         try:
             if self.parent_view.gif:
@@ -279,13 +331,15 @@ class PixelSortCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        if self._synced:
-            return
-        await self.bot.wait_until_ready()
-        await self.bot.tree.sync()
-        self._synced = True
+        # Uncomment if your bot supports slash commands tree sync
+        # if self._synced:
+        #     return
+        # await self.bot.wait_until_ready()
+        # await self.bot.tree.sync()
+        # self._synced = True
+        pass
 
-    @commands.slash_command(name="test", description="Pixel-sort an image with a GUI.")
+    @commands.slash_command(name="pixel_sort", description="Pixel-sort an image with a GUI.")
     async def pixelsort(
         self,
         ctx: discord.ApplicationContext,
@@ -293,7 +347,8 @@ class PixelSortCog(commands.Cog):
         emote: Option(str, "Server emote like <:name:id>", required=False) = None,
         image_url: Option(str, "Direct image URL", required=False) = None
     ):
-        await ctx.defer(ephemeral=True)
+        await ctx.defer()  # Not ephemeral
+
         image_data = None
         async with aiohttp.ClientSession() as session:
             if user:
@@ -307,22 +362,22 @@ class PixelSortCog(commands.Cog):
                         async with session.get(str(em.url)) as resp:
                             image_data = await resp.read()
                 else:
-                    await ctx.respond("Invalid emote format.", ephemeral=True)
+                    await ctx.respond("Invalid emote format.")
                     return
             elif image_url:
                 async with session.get(image_url) as resp:
                     image_data = await resp.read()
             else:
-                await ctx.respond("Please provide a user, emote, or image URL.", ephemeral=True)
+                await ctx.respond("Please provide a user, emote, or image URL.")
                 return
         try:
             base_img = _resize_keep_aspect(Image.open(BytesIO(image_data)).convert("RGB"))
         except Exception as e:
-            await ctx.respond(f"Failed to load image: {e}", ephemeral=True)
+            await ctx.respond(f"Failed to load image: {e}")
             return
 
         view = PixelSortOptionsView(ctx, base_img)
-        await ctx.respond("Select your pixel sort options and click **Run Pixel Sort**.", view=view, ephemeral=True)
+        await ctx.respond("Select your pixel sort options and click **Run Pixel Sort**.", view=view)
 
 def setup(bot):
     bot.add_cog(PixelSortCog(bot))
