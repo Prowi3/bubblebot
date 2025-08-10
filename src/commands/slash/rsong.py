@@ -7,9 +7,9 @@ from discord.ext import commands
 from discord.ui import View, Button
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import aiohttp
-from PIL import Image
 from io import BytesIO
+from PIL import Image
+import aiohttp
 
 RECENT_FILE = Path("data/recent_songs.json")
 BAD_FILE = Path("data/bad_playlists.json")
@@ -19,12 +19,21 @@ def ms_to_minsec(ms: int) -> str:
     m, s = divmod(s, 60)
     return f"{m}:{s:02d}"
 
-def get_dominant_color(image_bytes):
-    with Image.open(BytesIO(image_bytes)) as img:
-        img = img.resize((50, 50))
-        result = img.convert("P", palette=Image.ADAPTIVE, colors=1)
-        dominant_color = result.getpalette()[:3]
-        return dominant_color
+async def get_dominant_color(url: str):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    return discord.Color.blurple()
+                data = await resp.read()
+        img = Image.open(BytesIO(data)).convert("RGB").resize((50, 50))
+        pixels = list(img.getdata())
+        r = sum([p[0] for p in pixels]) // len(pixels)
+        g = sum([p[1] for p in pixels]) // len(pixels)
+        b = sum([p[2] for p in pixels]) // len(pixels)
+        return discord.Color.from_rgb(r, g, b)
+    except Exception:
+        return discord.Color.blurple()
 
 class RandomSong(commands.Cog):
     def __init__(self, bot):
@@ -35,40 +44,23 @@ class RandomSong(commands.Cog):
             raise RuntimeError("SPOTID and SPOTSEC env vars required")
         self.spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
         self.categories = {
-            "top_songs": "top hits",
-            "top_of_the_week": "37i9dQZF1DXcBWIGoYBM5M",
-            "pop": "37i9dQZF1DXcZDD7cfEKhW",
-            "rock": "37i9dQZF1DWXRqgorJj26U",
-            "hiphop": "37i9dQZF1DX0XUsuxWHRQd",
-            "jazz": "37i9dQZF1DXbITWG1ZJKYt",
-            "classical": "37i9dQZF1DWWEJlAGA9gs0",
-            "electronic": "37i9dQZF1DX0BcQWzuB7ZO",
-            "country": "37i9dQZF1DX1lVhptIYRda",
-            "latin": "37i9dQZF1DX10zKzsJ2jva",
-            "indie": "37i9dQZF1DX2Nc3B70tvx0",
-            "blues": "37i9dQZF1DXd9rSDyQguIk",
-        }
-        self.fallback_playlists = {
-            "classical": ["37i9dQZF1DWWEJlAGA9gs0", "37i9dQZF1DX6ziVCJnEm59"],
-            "hiphop": ["37i9dQZF1DX0XUsuxWHRQd", "37i9dQZF1DX4o1oenSJRJd"],
-            "pop": ["37i9dQZF1DXcZDD7cfEKhW", "37i9dQZF1DXbYM3nMM0oPk"],
-            "rock": ["37i9dQZF1DWXRqgorJj26U", "37i9dQZF1DX1lVhptIYRda"],
+            "top_of_the_week": "37i9dQZF1DXcBWIGoYBM5M",    # Today's Top Hits
+            "pop": "37i9dQZF1DXcZDD7cfEKhW",                  # Pop Rising
+            "rock": "37i9dQZF1DWXRqgorJj26U",                 # Rock This
+            "hiphop": "37i9dQZF1DX0XUsuxWHRQd",               # RapCaviar
+            "jazz": "37i9dQZF1DXbITWG1ZJKYt",                 # Jazz Classics
+            "classical": "37i9dQZF1DWWEJlAGA9gs0",            # Classical Essentials
+            "electronic": "37i9dQZF1DX0BcQWzuB7ZO",           # Mint
+            "country": "37i9dQZF1DX1lVhptIYRda",               # Hot Country
+            "latin": "37i9dQZF1DX10zKzsJ2jva",                 # Viva Latino
+            "indie": "37i9dQZF1DX2Nc3B70tvx0",                 # Indie Pop
+            "blues": "37i9dQZF1DXd9rSDyQguIk",                 # Blues Classics
         }
         self.max_recent = 40
         self.recent_songs = self._load_recent()
         self.bad_playlists = self._load_bad_playlists()
         self._validate_and_prune_playlists()
         self._synced = False
-        self._maybe_register_autocomplete()
-
-    def _maybe_register_autocomplete(self):
-        cmd = getattr(self, "random_song", None)
-        ac = getattr(cmd, "autocomplete", None)
-        if callable(ac):
-            try:
-                ac("artist")(self.artist_autocomplete)
-            except Exception:
-                pass
 
     def _load_recent(self):
         try:
@@ -136,33 +128,18 @@ class RandomSong(commands.Cog):
     def _validate_and_prune_playlists(self):
         to_remove = []
         for key, source in list(self.categories.items()):
-            if key == "top_songs":
-                continue
             if not self._is_playlist_id(source):
                 continue
             if source in self.bad_playlists:
-                to_remove.append((self.categories, key))
+                to_remove.append(key)
                 continue
             try:
                 self.spotify.playlist(source)
             except Exception:
                 self._add_bad(source)
-                to_remove.append((self.categories, key))
-        for genre, lst in list(self.fallback_playlists.items()):
-            new_list = []
-            for pid in lst:
-                if pid in self.bad_playlists:
-                    continue
-                if not self._is_playlist_id(pid):
-                    continue
-                try:
-                    self.spotify.playlist(pid)
-                    new_list.append(pid)
-                except Exception:
-                    self._add_bad(pid)
-            self.fallback_playlists[genre] = new_list
-        for container, key in to_remove:
-            container.pop(key, None)
+                to_remove.append(key)
+        for key in to_remove:
+            self.categories.pop(key, None)
 
     async def _get_random_track_from_playlist(self, playlist_id: str, tries_limit: int = 12):
         if not playlist_id or playlist_id in self.bad_playlists:
@@ -230,12 +207,15 @@ class RandomSong(commands.Cog):
                     return random.choice(filtered)
             except Exception:
                 pass
-        if category == "top_songs":
-            return await self._get_random_track_from_search("top hits")
         if category == "random":
             return await self._get_random_track_from_search("year:2022")
         if category in self.categories:
-            return await self._get_random_track_from_search(self.categories[category])
+            playlist_id = self.categories[category]
+            track = await self._get_random_track_from_playlist(playlist_id)
+            if track:
+                return track
+            # fallback to search if playlist failed
+            return await self._get_random_track_from_search(category)
         return await self._get_random_track_from_search("year:2022")
 
     @commands.Cog.listener()
@@ -257,29 +237,11 @@ class RandomSong(commands.Cog):
             str,
             "Choose category or genre",
             required=False,
-            choices=[
-                "random",
-                *[
-                    "top_songs",
-                    "top_of_the_week",
-                    "pop",
-                    "rock",
-                    "hiphop",
-                    "jazz",
-                    "classical",
-                    "electronic",
-                    "country",
-                    "latin",
-                    "indie",
-                    "blues",
-                ],
-            ],
+            choices=list(self.categories.keys()) + ["random"],
         ) = "random",
-        artist: discord.Option(str, "Search for an artist", required=False, autocomplete=True) = None,
+        artist: discord.Option(str, "Search for an artist", required=False) = None,
     ):
         await ctx.defer()
-        if category == "random":
-            category = "random"
         track = await self._choose_track(category, artist)
         if not track:
             await ctx.respond("Couldn't find a new song right now — try again later.", ephemeral=True)
@@ -294,31 +256,17 @@ class RandomSong(commands.Cog):
         duration = ms_to_minsec(track.get("duration_ms", 0))
         spotify_url = track.get("external_urls", {}).get("spotify") or f"https://open.spotify.com/track/{track.get('id')}"
         images = album.get("images") or []
-        thumbnail_url = images[0].get("url") if images else None
+        color = discord.Color.blurple()
+        if images:
+            color = await get_dominant_color(images[0].get("url"))
 
-        embed_color = discord.Color.blurple()
-        if thumbnail_url:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(thumbnail_url) as resp:
-                        if resp.status == 200:
-                            img_bytes = await resp.read()
-                            dominant_rgb = get_dominant_color(img_bytes)
-                            embed_color = discord.Color.from_rgb(*dominant_rgb)
-            except Exception:
-                pass
-
-        embed = discord.Embed(
-            title=track_name,
-            url=spotify_url,
-            description=f"**By:** {artists}",
-            color=embed_color,
-        )
-        embed.set_thumbnail(url=thumbnail_url)
+        embed = discord.Embed(title=track_name, url=spotify_url, description=f"By {artists}", color=color)
         embed.add_field(name="Album", value=album_name, inline=True)
         embed.add_field(name="Duration", value=duration, inline=True)
         if release_date:
             embed.add_field(name="Released", value=release_date, inline=True)
+        if images:
+            embed.set_thumbnail(url=images[0].get("url"))
         embed.set_footer(text=f"Category: {category.replace('_',' ').title()}")
 
         view = View()
@@ -329,6 +277,7 @@ class RandomSong(commands.Cog):
 
         await ctx.respond(embed=embed, view=view)
 
+    @random_song.autocomplete("artist")
     async def artist_autocomplete(self, ctx: discord.AutocompleteContext, user_input: str):
         if not user_input:
             return []
