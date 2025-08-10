@@ -122,7 +122,7 @@ def pixel_sort_frame_smooth(img: Image.Image, mode: str, invert: bool, progress:
 
 async def make_pixelsort_gif_and_send(ctx, base_img: Image.Image, mode: str, invert: bool,
                                        structure: str,
-                                       duration_seconds: float = 5.0, frames: int = 40,
+                                       duration_seconds: float = 4.0, frames: int = 40,
                                        max_dim: int = 512, colors: int = 128):
     if max(base_img.size) > max_dim:
         base_img = _resize_keep_aspect(base_img, max_dim)
