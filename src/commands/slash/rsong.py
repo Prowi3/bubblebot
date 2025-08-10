@@ -1,45 +1,295 @@
+import discord
 import os
+import json
 import random
+from pathlib import Path
+from discord.ext import commands
+from discord.ui import View, Button
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import discord
-from discord.ext import commands
-from discord.commands import Option
+
+RECENT_FILE = Path("data/recent_songs.json")
+BAD_FILE = Path("data/bad_playlists.json")
+
+def ms_to_minsec(ms: int) -> str:
+    s = int(ms / 1000)
+    m, s = divmod(s, 60)
+    return f"{m}:{s:02d}"
 
 class RandomSong(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    def get_spotify_client(self):
         client_id = os.environ.get("SPOTID")
         client_secret = os.environ.get("SPOTSEC")
         if not client_id or not client_secret:
-            return None
-        return spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
+            raise RuntimeError("SPOTID and SPOTSEC env vars required")
+        self.spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
+        self.categories = {
+            "top_songs": "top hits",
+            "top_of_the_week": "37i9dQZF1DXcBWIGoYBM5M",
+            "pop": "37i9dQZF1DXcZDD7cfEKhW",
+            "rock": "37i9dQZF1DWXRqgorJj26U",
+            "hiphop": "37i9dQZF1DX0XUsuxWHRQd",
+            "jazz": "37i9dQZF1DXbITWG1ZJKYt",
+            "classical": "37i9dQZF1DWWEJlAGA9gs0",
+            "electronic": "37i9dQZF1DX0BcQWzuB7ZO",
+            "country": "37i9dQZF1DX1lVhptIYRda",
+            "latin": "37i9dQZF1DX10zKzsJ2jva",
+            "indie": "37i9dQZF1DX2Nc3B70tvx0",
+            "blues": "37i9dQZF1DXd9rSDyQguIk",
+        }
+        self.fallback_playlists = {
+            "classical": ["37i9dQZF1DWWEJlAGA9gs0", "37i9dQZF1DX6ziVCJnEm59"],
+            "hiphop": ["37i9dQZF1DX0XUsuxWHRQd", "37i9dQZF1DX4o1oenSJRJd"],
+            "pop": ["37i9dQZF1DXcZDD7cfEKhW", "37i9dQZF1DXbYM3nMM0oPk"],
+            "rock": ["37i9dQZF1DWXRqgorJj26U", "37i9dQZF1DX1lVhptIYRda"],
+        }
+        self.max_recent = 40
+        self.recent_songs = self._load_recent()
+        self.bad_playlists = self._load_bad_playlists()
+        self._validate_and_prune_playlists()
+        self._synced = False
+        self._maybe_register_autocomplete()
 
-    @commands.slash_command(name="random_song", description="Get a random song from Spotify")
-    async def random_song(self, ctx: discord.ApplicationContext, artist: Option(str, "Artist name", required=False) = None):
-        await ctx.defer()
-        spotify = self.get_spotify_client()
-        if not spotify:
-            await ctx.respond("Spotify credentials missing.", ephemeral=True)
-            return
-        query = f"artist:{artist}" if artist else "year:2022"
+    def _maybe_register_autocomplete(self):
+        cmd = getattr(self, "random_song", None)
+        ac = getattr(cmd, "autocomplete", None)
+        if callable(ac):
+            try:
+                ac("artist")(self.artist_autocomplete)
+            except Exception:
+                pass
+
+    def _load_recent(self):
         try:
-            results = spotify.search(q=query, type="track", limit=10)
-            tracks = results.get("tracks", {}).get("items", [])
+            RECENT_FILE.parent.mkdir(parents=True, exist_ok=True)
+            if RECENT_FILE.exists():
+                with RECENT_FILE.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        return data[-self.max_recent :]
         except Exception:
-            await ctx.respond("Spotify search failed.", ephemeral=True)
+            pass
+        return []
+
+    def _save_recent(self):
+        try:
+            with RECENT_FILE.open("w", encoding="utf-8") as f:
+                json.dump(self.recent_songs[-self.max_recent :], f)
+        except Exception:
+            pass
+
+    def _load_bad_playlists(self):
+        try:
+            BAD_FILE.parent.mkdir(parents=True, exist_ok=True)
+            if BAD_FILE.exists():
+                with BAD_FILE.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        return set(data)
+        except Exception:
+            pass
+        return set()
+
+    def _save_bad_playlists(self):
+        try:
+            with BAD_FILE.open("w", encoding="utf-8") as f:
+                json.dump(list(self.bad_playlists), f)
+        except Exception:
+            pass
+
+    def _add_bad(self, playlist_id: str):
+        if playlist_id:
+            self.bad_playlists.add(playlist_id)
+            self._save_bad_playlists()
+
+    def _add_recent(self, song_uri: str):
+        if song_uri in self.recent_songs:
+            try:
+                self.recent_songs.remove(song_uri)
+            except ValueError:
+                pass
+        self.recent_songs.append(song_uri)
+        if len(self.recent_songs) > self.max_recent:
+            self.recent_songs = self.recent_songs[-self.max_recent :]
+        self._save_recent()
+
+    def _is_playlist_id(self, value: str) -> bool:
+        if not isinstance(value, str):
+            return False
+        if " " in value:
+            return False
+        if len(value) < 10:
+            return False
+        return True
+
+    def _validate_and_prune_playlists(self):
+        to_remove = []
+        for key, source in list(self.categories.items()):
+            if key == "top_songs":
+                continue
+            if not self._is_playlist_id(source):
+                continue
+            if source in self.bad_playlists:
+                to_remove.append((self.categories, key))
+                continue
+            try:
+                self.spotify.playlist(source)
+            except Exception:
+                self._add_bad(source)
+                to_remove.append((self.categories, key))
+        for genre, lst in list(self.fallback_playlists.items()):
+            new_list = []
+            for pid in lst:
+                if pid in self.bad_playlists:
+                    continue
+                if not self._is_playlist_id(pid):
+                    continue
+                try:
+                    self.spotify.playlist(pid)
+                    new_list.append(pid)
+                except Exception:
+                    self._add_bad(pid)
+            self.fallback_playlists[genre] = new_list
+        for container, key in to_remove:
+            container.pop(key, None)
+
+    async def _get_random_track_from_playlist(self, playlist_id: str, tries_limit: int = 12):
+        if not playlist_id or playlist_id in self.bad_playlists:
+            return None
+        try:
+            playlist = self.spotify.playlist(playlist_id)
+            total_tracks = playlist.get("tracks", {}).get("total", 0)
+        except Exception:
+            self._add_bad(playlist_id)
+            return None
+        if total_tracks <= 0:
+            return None
+        tries = 0
+        while tries < tries_limit:
+            safe_max = min(total_tracks - 1, 9999)
+            offset = random.randint(0, safe_max)
+            try:
+                items = self.spotify.playlist_items(playlist_id, limit=1, offset=offset, additional_types=("track",))
+            except Exception:
+                self._add_bad(playlist_id)
+                return None
+            if not items or not items.get("items"):
+                tries += 1
+                continue
+            item = items["items"][0].get("track") or items["items"][0]
+            if not item:
+                tries += 1
+                continue
+            track = item
+            uri = track.get("uri") or track.get("id")
+            if not uri:
+                tries += 1
+                continue
+            if uri not in self.recent_songs:
+                return track
+            tries += 1
+        return None
+
+    async def _get_random_track_from_search(self, query: str, tries_limit: int = 12):
+        tries = 0
+        while tries < tries_limit:
+            offset = random.randint(0, 999)
+            try:
+                results = self.spotify.search(q=query, type="track", limit=1, offset=offset)
+            except Exception:
+                return None
+            items = results.get("tracks", {}).get("items", [])
+            if not items:
+                tries += 1
+                continue
+            track = items[0]
+            uri = track.get("uri") or track.get("id")
+            if uri and uri not in self.recent_songs:
+                return track
+            tries += 1
+        return None
+
+    async def _choose_track(self, category: str, artist_name: str = None):
+        if artist_name:
+            try:
+                results = self.spotify.search(q=f"artist:{artist_name}", type="track", limit=50)
+                tracks = results.get("tracks", {}).get("items", [])
+                filtered = [t for t in tracks if t.get("uri") not in self.recent_songs]
+                if filtered:
+                    return random.choice(filtered)
+            except Exception:
+                pass
+        if category == "top_songs":
+            return await self._get_random_track_from_search("top hits")
+        if category == "random":
+            return await self._get_random_track_from_search("year:2022")
+        if category in self.categories:
+            return await self._get_random_track_from_search(self.categories[category])
+        return await self._get_random_track_from_search("year:2022")
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if self._synced:
             return
-        if not tracks:
-            await ctx.respond("No songs found.", ephemeral=True)
+        try:
+            await self.bot.wait_until_ready()
+            await self.bot.tree.sync()
+        except Exception:
+            pass
+        self._synced = True
+
+    @commands.slash_command(name="random_song", description="Get a random song from Spotify (by genre/category or artist).")
+    async def random_song(
+        self,
+        ctx,
+        category: discord.Option(str, "Choose category or genre", required=False, choices=["random", *list(["top_songs","top_of_the_week","pop","rock","hiphop","jazz","classical","electronic","country","latin","indie","blues"])]) = "random",
+        artist: discord.Option(str, "Search for an artist", required=False, autocomplete=True) = None,
+    ):
+        await ctx.defer()
+        if category == "random":
+            category = "random"
+        track = await self._choose_track(category, artist)
+        if not track:
+            await ctx.respond("Couldn't find a new song right now — try again later.", ephemeral=True)
             return
-        track = random.choice(tracks)
-        name = track["name"]
-        artists = ", ".join(a["name"] for a in track["artists"])
-        url = track["external_urls"]["spotify"]
-        embed = discord.Embed(title=name, url=url, description=f"By {artists}", color=discord.Color.blurple())
-        await ctx.respond(embed=embed)
+        track_uri = track.get("uri") or f"spotify:track:{track.get('id')}"
+        self._add_recent(track_uri)
+        track_name = track.get("name", "Unknown")
+        artists = ", ".join([a.get("name", "Unknown") for a in track.get("artists", [])])
+        album = track.get("album", {}) or {}
+        album_name = album.get("name", "Unknown")
+        release_date = album.get("release_date", "")
+        duration = ms_to_minsec(track.get("duration_ms", 0))
+        spotify_url = track.get("external_urls", {}).get("spotify") or f"https://open.spotify.com/track/{track.get('id')}"
+        embed = discord.Embed(title=track_name, url=spotify_url, description=f"By {artists}", color=discord.Color.blurple())
+        embed.add_field(name="Album", value=album_name, inline=True)
+        embed.add_field(name="Duration", value=duration, inline=True)
+        if release_date:
+            embed.add_field(name="Released", value=release_date, inline=True)
+        images = album.get("images") or []
+        if images:
+            embed.set_thumbnail(url=images[0].get("url"))
+        embed.set_footer(text=f"Category: {category.replace('_',' ').title()}")
+        view = View()
+        view.add_item(Button(label="Open in Spotify", url=spotify_url))
+        preview_url = track.get("preview_url")
+        if preview_url:
+            view.add_item(Button(label="Preview (30s)", url=preview_url))
+        await ctx.respond(embed=embed, view=view)
+
+    async def artist_autocomplete(self, ctx: discord.AutocompleteContext, user_input: str):
+        if not user_input:
+            return []
+        try:
+            results = self.spotify.search(q=user_input, type="artist", limit=10)
+            artists = results.get("artists", {}).get("items", [])
+            return [
+                discord.OptionChoice(name=artist.get("name", "Unknown"), value=artist.get("name", "Unknown"))
+                for artist in artists
+            ]
+        except Exception:
+            return []
 
 def setup(bot):
     bot.add_cog(RandomSong(bot))
