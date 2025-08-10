@@ -7,6 +7,9 @@ from discord.ext import commands
 from discord.ui import View, Button
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+import aiohttp
+from PIL import Image
+from io import BytesIO
 
 RECENT_FILE = Path("data/recent_songs.json")
 BAD_FILE = Path("data/bad_playlists.json")
@@ -15,6 +18,13 @@ def ms_to_minsec(ms: int) -> str:
     s = int(ms / 1000)
     m, s = divmod(s, 60)
     return f"{m}:{s:02d}"
+
+def get_dominant_color(image_bytes):
+    with Image.open(BytesIO(image_bytes)) as img:
+        img = img.resize((50, 50))
+        result = img.convert("P", palette=Image.ADAPTIVE, colors=1)
+        dominant_color = result.getpalette()[:3]
+        return dominant_color
 
 class RandomSong(commands.Cog):
     def __init__(self, bot):
@@ -243,7 +253,28 @@ class RandomSong(commands.Cog):
     async def random_song(
         self,
         ctx,
-        category: discord.Option(str, "Choose category or genre", required=False, choices=["random", *list(["top_songs","top_of_the_week","pop","rock","hiphop","jazz","classical","electronic","country","latin","indie","blues"])]) = "random",
+        category: discord.Option(
+            str,
+            "Choose category or genre",
+            required=False,
+            choices=[
+                "random",
+                *[
+                    "top_songs",
+                    "top_of_the_week",
+                    "pop",
+                    "rock",
+                    "hiphop",
+                    "jazz",
+                    "classical",
+                    "electronic",
+                    "country",
+                    "latin",
+                    "indie",
+                    "blues",
+                ],
+            ],
+        ) = "random",
         artist: discord.Option(str, "Search for an artist", required=False, autocomplete=True) = None,
     ):
         await ctx.defer()
@@ -262,20 +293,40 @@ class RandomSong(commands.Cog):
         release_date = album.get("release_date", "")
         duration = ms_to_minsec(track.get("duration_ms", 0))
         spotify_url = track.get("external_urls", {}).get("spotify") or f"https://open.spotify.com/track/{track.get('id')}"
-        embed = discord.Embed(title=track_name, url=spotify_url, description=f"By {artists}", color=discord.Color.blurple())
+        images = album.get("images") or []
+        thumbnail_url = images[0].get("url") if images else None
+
+        embed_color = discord.Color.blurple()
+        if thumbnail_url:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(thumbnail_url) as resp:
+                        if resp.status == 200:
+                            img_bytes = await resp.read()
+                            dominant_rgb = get_dominant_color(img_bytes)
+                            embed_color = discord.Color.from_rgb(*dominant_rgb)
+            except Exception:
+                pass
+
+        embed = discord.Embed(
+            title=track_name,
+            url=spotify_url,
+            description=f"**By:** {artists}",
+            color=embed_color,
+        )
+        embed.set_thumbnail(url=thumbnail_url)
         embed.add_field(name="Album", value=album_name, inline=True)
         embed.add_field(name="Duration", value=duration, inline=True)
         if release_date:
             embed.add_field(name="Released", value=release_date, inline=True)
-        images = album.get("images") or []
-        if images:
-            embed.set_thumbnail(url=images[0].get("url"))
         embed.set_footer(text=f"Category: {category.replace('_',' ').title()}")
+
         view = View()
         view.add_item(Button(label="Open in Spotify", url=spotify_url))
         preview_url = track.get("preview_url")
         if preview_url:
             view.add_item(Button(label="Preview (30s)", url=preview_url))
+
         await ctx.respond(embed=embed, view=view)
 
     async def artist_autocomplete(self, ctx: discord.AutocompleteContext, user_input: str):
