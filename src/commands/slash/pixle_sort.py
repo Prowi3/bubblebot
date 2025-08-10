@@ -1,9 +1,9 @@
 import discord
 from discord.ext import commands
 from discord.commands import Option
-import numpy as np
-from PIL import Image, ImageSequence
+from PIL import Image
 import io
+import numpy as np
 import cv2
 
 MAX_DIM = 1024
@@ -11,41 +11,49 @@ MAX_DIM = 1024
 class PixelSort(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self._synced = False
 
-    @commands.slash_command(name="pixelsort", description="Pixel-sort an image for glitch/art effects")
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if self._synced:
+            return
+        await self.bot.wait_until_ready()
+        await self.bot.tree.sync()
+        self._synced = True
+
+    @commands.slash_command(
+        name="pixelsort",
+        description="Pixel sort an image with optional structured sorting and GIF output."
+    )
     async def pixelsort(
         self,
-        ctx,
+        ctx: discord.ApplicationContext,
         mode: Option(str, "Sorting mode", choices=["luminance", "hue", "red", "green", "blue"], required=True),
         structure: Option(str, "Sort type", choices=["full", "structured"], required=True),
-        reverse: Option(bool, "Reverse the pixel sorting", required=False, default=False),
-        gif: Option(bool, "Export as GIF (loops sorted ↔ original)", required=False, default=False),
-        attachment: Option(discord.Attachment, "Image to pixel sort", required=True)
+        reverse: Option(bool, "Reverse sorting order", required=False, default=False),
+        gif: Option(bool, "Output as looping GIF", required=False, default=False),
+        attachment: Option(discord.Attachment, "Image to pixel sort", required=True),
     ):
         await ctx.defer()
 
-        # Load image
         img_bytes = await attachment.read()
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
 
-        # Resize to keep under MAX_DIM
+        # Resize if necessary
         ratio = min(MAX_DIM / img.width, MAX_DIM / img.height, 1)
         if ratio < 1:
             img = img.resize((int(img.width * ratio), int(img.height * ratio)), Image.LANCZOS)
 
         img_np = np.array(img)
 
-        # Generate mask if "structured" mode is selected
         mask = None
         if structure == "structured":
             gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-            edges = cv2.Canny(gray, 50, 150)  # Detect edges
-            mask = edges > 0  # Boolean mask
+            edges = cv2.Canny(gray, 50, 150)
+            mask = edges > 0
 
-        # Apply pixel sorting
         sorted_img_np = self.pixel_sort(img_np, mode, reverse, mask)
 
-        # Handle output
         if gif:
             frames = [Image.fromarray(sorted_img_np), img]
             buf = io.BytesIO()
@@ -59,7 +67,6 @@ class PixelSort(commands.Cog):
             await ctx.respond(file=discord.File(buf, filename="pixelsort.png"))
 
     def pixel_sort(self, img_np, mode, reverse=False, mask=None):
-        """Apply pixel sorting by rows"""
         h, w, c = img_np.shape
         sorted_img = np.copy(img_np)
 
@@ -94,6 +101,7 @@ class PixelSort(commands.Cog):
                 sorted_img[y] = sorted_img[y, sort_idx]
 
         return sorted_img
+
 
 def setup(bot):
     bot.add_cog(PixelSort(bot))
