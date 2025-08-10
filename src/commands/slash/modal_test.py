@@ -331,15 +331,9 @@ class PixelSortCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        # Uncomment if your bot supports slash commands tree sync
-        # if self._synced:
-        #     return
-        # await self.bot.wait_until_ready()
-        # await self.bot.tree.sync()
-        # self._synced = True
         pass
 
-    @commands.slash_command(name="pixel_sort", description="Pixel-sort an image with a GUI.")
+    @commands.slash_command(name="test", description="Pixel-sort an image with a GUI.")
     async def pixelsort(
         self,
         ctx: discord.ApplicationContext,
