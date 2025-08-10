@@ -7,7 +7,7 @@ from io import BytesIO
 from PIL import Image
 import discord
 from discord.ext import commands
-from discord.commands import Option
+from discord.commands import Option, OptionChoice
 
 class RandomSong(commands.Cog):
     def __init__(self, bot):
@@ -39,7 +39,11 @@ class RandomSong(commands.Cog):
         return discord.Color.from_rgb(r, g, b)
 
     @commands.slash_command(name="random_song", description="Get a random song from Spotify")
-    async def random_song(self, ctx: discord.ApplicationContext, artist: Option(str, "Artist name", required=False, autocomplete=True) = None):
+    async def random_song(
+        self,
+        ctx: discord.ApplicationContext,
+        artist: Option(str, "Artist name", required=False, autocomplete=True) = None
+    ):
         await ctx.defer()
         spotify = self.get_spotify_client()
         if not spotify:
@@ -82,7 +86,7 @@ class RandomSong(commands.Cog):
         try:
             results = spotify.search(q=current, type="artist", limit=5)
             artists = results.get("artists", {}).get("items", [])
-            return [discord.OptionChoice(name=a["name"], value=a["name"]) for a in artists]
+            return [OptionChoice(name=a["name"], value=a["name"]) for a in artists]
         except Exception:
             return []
 
