@@ -1,5 +1,3 @@
-import discord
-from discord.ext import commands
 import os
 import random
 import spotipy
@@ -7,14 +5,24 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import aiohttp
 from io import BytesIO
 from PIL import Image
+import discord
+from discord.ext import commands
+from discord.commands import Option
 
 class RandomSong(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.spotify = None
+        self.recent = []
+
+    def _ensure_spotify(self):
+        if self.spotify:
+            return
         client_id = os.environ.get("SPOTID")
         client_secret = os.environ.get("SPOTSEC")
+        if not client_id or not client_secret:
+            raise RuntimeError("Missing SPOTID/SPOTSEC")
         self.spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
-        self.recent = []
 
     async def get_dominant_color(self, url):
         async with aiohttp.ClientSession() as session:
@@ -23,16 +31,22 @@ class RandomSong(commands.Cog):
                     return discord.Color.blurple()
                 data = await resp.read()
         img = Image.open(BytesIO(data)).convert('RGBA').resize((50,50))
-        pixels = list(img.getdata())
-        pixels = [p for p in pixels if p[3] > 0]  # ignore transparent pixels
+        pixels = [p for p in img.getdata() if p[3] > 0]
+        if not pixels:
+            return discord.Color.blurple()
         r = sum(p[0] for p in pixels) // len(pixels)
         g = sum(p[1] for p in pixels) // len(pixels)
         b = sum(p[2] for p in pixels) // len(pixels)
         return discord.Color.from_rgb(r, g, b)
 
     @commands.slash_command(name="random_song", description="Get a random song from Spotify")
-    async def random_song(self, ctx: discord.ApplicationContext, artist: discord.Option(str, "Artist name", required=False, autocomplete=True) = None):
+    async def random_song(self, ctx: discord.ApplicationContext, artist: Option(str, "Artist name", required=False, autocomplete=True) = None):
         await ctx.defer()
+        try:
+            self._ensure_spotify()
+        except Exception as e:
+            await ctx.respond("Spotify not configured or unavailable.", ephemeral=True)
+            return
         query = f"artist:{artist}" if artist else "year:2022"
         try:
             results = self.spotify.search(q=query, type="track", limit=20)
@@ -67,9 +81,13 @@ class RandomSong(commands.Cog):
         if not current:
             return []
         try:
+            self._ensure_spotify()
+        except Exception:
+            return []
+        try:
             results = self.spotify.search(q=current, type="artist", limit=5)
             artists = results.get("artists", {}).get("items", [])
-            return [discord.OptionChoice(name=a["name"], value=a["name"]) for a in artists]
+            return [a["name"] for a in artists]
         except Exception:
             return []
 
