@@ -5,12 +5,8 @@ import random
 from pathlib import Path
 from discord.ext import commands
 from discord.ui import View, Button
-from discord.commands import Option
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-from io import BytesIO
-from PIL import Image
-import aiohttp
 
 RECENT_FILE = Path("data/recent_songs.json")
 BAD_FILE = Path("data/bad_playlists.json")
@@ -19,19 +15,6 @@ def ms_to_minsec(ms: int) -> str:
     s = int(ms / 1000)
     m, s = divmod(s, 60)
     return f"{m}:{s:02d}"
-
-async def get_dominant_color(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            if resp.status != 200:
-                return discord.Color.blurple()
-            data = await resp.read()
-    image = Image.open(BytesIO(data)).convert("RGB").resize((50, 50))
-    pixels = list(image.getdata())
-    r = sum([p[0] for p in pixels]) // len(pixels)
-    g = sum([p[1] for p in pixels]) // len(pixels)
-    b = sum([p[2] for p in pixels]) // len(pixels)
-    return discord.Color.from_rgb(r, g, b)
 
 class RandomSong(commands.Cog):
     def __init__(self, bot):
@@ -65,6 +48,17 @@ class RandomSong(commands.Cog):
         self.recent_songs = self._load_recent()
         self.bad_playlists = self._load_bad_playlists()
         self._validate_and_prune_playlists()
+        self._synced = False
+        self._maybe_register_autocomplete()
+
+    def _maybe_register_autocomplete(self):
+        cmd = getattr(self, "random_song", None)
+        ac = getattr(cmd, "autocomplete", None)
+        if callable(ac):
+            try:
+                ac("artist")(self.artist_autocomplete)
+            except Exception:
+                pass
 
     def _load_recent(self):
         try:
@@ -234,14 +228,27 @@ class RandomSong(commands.Cog):
             return await self._get_random_track_from_search(self.categories[category])
         return await self._get_random_track_from_search("year:2022")
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if self._synced:
+            return
+        try:
+            await self.bot.wait_until_ready()
+            await self.bot.tree.sync()
+        except Exception:
+            pass
+        self._synced = True
+
     @commands.slash_command(name="random_song", description="Get a random song from Spotify (by genre/category or artist).")
     async def random_song(
         self,
-        ctx: discord.ApplicationContext,
-        category: Option(str, "Choose category or genre", required=False, choices=list(self.categories.keys()) + ["random"]) = "random",
-        artist: Option(str, "Search for an artist", required=False, autocomplete=True) = None,
+        ctx,
+        category: discord.Option(str, "Choose category or genre", required=False, choices=["random", *list(["top_songs","top_of_the_week","pop","rock","hiphop","jazz","classical","electronic","country","latin","indie","blues"])]) = "random",
+        artist: discord.Option(str, "Search for an artist", required=False, autocomplete=True) = None,
     ):
         await ctx.defer()
+        if category == "random":
+            category = "random"
         track = await self._choose_track(category, artist)
         if not track:
             await ctx.respond("Couldn't find a new song right now — try again later.", ephemeral=True)
@@ -255,15 +262,12 @@ class RandomSong(commands.Cog):
         release_date = album.get("release_date", "")
         duration = ms_to_minsec(track.get("duration_ms", 0))
         spotify_url = track.get("external_urls", {}).get("spotify") or f"https://open.spotify.com/track/{track.get('id')}"
-        images = album.get("images") or []
-        color = discord.Color.blurple()
-        if images:
-            color = await get_dominant_color(images[0].get("url"))
-        embed = discord.Embed(title=track_name, url=spotify_url, description=f"By {artists}", color=color)
+        embed = discord.Embed(title=track_name, url=spotify_url, description=f"By {artists}", color=discord.Color.blurple())
         embed.add_field(name="Album", value=album_name, inline=True)
         embed.add_field(name="Duration", value=duration, inline=True)
         if release_date:
             embed.add_field(name="Released", value=release_date, inline=True)
+        images = album.get("images") or []
         if images:
             embed.set_thumbnail(url=images[0].get("url"))
         embed.set_footer(text=f"Category: {category.replace('_',' ').title()}")
@@ -274,9 +278,7 @@ class RandomSong(commands.Cog):
             view.add_item(Button(label="Preview (30s)", url=preview_url))
         await ctx.respond(embed=embed, view=view)
 
-    @random_song.autocomplete("artist")
-    async def artist_autocomplete(self, ctx: discord.AutocompleteContext):
-        user_input = ctx.value or ""
+    async def artist_autocomplete(self, ctx: discord.AutocompleteContext, user_input: str):
         if not user_input:
             return []
         try:
