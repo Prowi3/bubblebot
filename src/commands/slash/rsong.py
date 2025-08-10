@@ -139,11 +139,12 @@ class RandomSong(commands.Cog):
     async def on_ready(self):
         if self._synced:
             return
+        await self.bot.wait_until_ready()
         try:
-            await self.bot.wait_until_ready()
-            await self.bot.tree.sync()
-        except Exception:
-            pass
+            await self.bot.tree.sync()  # global sync
+            print("Slash commands synced globally.")
+        except Exception as e:
+            print(f"Failed to sync commands: {e}")
         self._synced = True
 
     @commands.slash_command(name="random_song", description="Get a random song from Spotify (by genre/category or artist).")
